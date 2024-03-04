@@ -8,9 +8,9 @@ pub fn write_ctrl(value: u8) {
 }
 
 pub fn and_ctrl(value: u8) {
-    let p = 0x2000 as *mut u8;
-    let next = Addr(p).read() & value;
-    write(p, next);
+    let p = Addr(0x2000);
+    let next = p.read() & value;
+    p.write(next);
 }
 
 pub fn or_ctrl(value: u8) {

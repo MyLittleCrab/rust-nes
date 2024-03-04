@@ -1,9 +1,9 @@
 // https://www.nesdev.org/wiki/APU_basics
 use crate::utils::{read, write, Addr};
-const APU: Addr = Addr(0x4000 as *mut u8);
-const PULSE1: *mut u8 = 0x4000 as *mut u8;
+const APU: Addr = Addr(0x4000);
+const PULSE1: Addr = Addr(0x4000);
 #[allow(dead_code)]
-const PULSE2: *mut u8 = 0x4004 as *mut u8;
+const PULSE2: Addr = Addr(0x4004);
 
 static mut SFX: Sfx = Sfx::None;
 static mut SFX_OFF: usize = 0;
@@ -45,28 +45,27 @@ pub fn play_sfx(type_: Sfx) {
     }
 }
 
-unsafe fn sfx_frame(p: *mut u8, hi: u8, lo: u8, dcvol: u8) -> bool {
-    let p = Addr(p);
+fn sfx_frame(p: Addr, hi: u8, lo: u8, dcvol: u8) -> bool {
     p.offset(2).write(lo);
     p.offset(3).write(hi); // only lower 3 bits matter
     p.write(dcvol);
     true
 }
 
-fn sfx_end(p: *mut u8) -> bool {
-    write(p, 0);
+fn sfx_end(p: Addr) -> bool {
+    p.write(0);
     false
 }
 
 #[allow(dead_code)]
-unsafe fn noise_frame(tp: u8, vol: u8) -> bool {
+fn noise_frame(tp: u8, vol: u8) -> bool {
     APU.offset(0xC).write(vol);
     APU.offset(0xE).write(tp);
     true
 }
 
 #[allow(dead_code)]
-unsafe fn noise_end() -> bool {
+fn noise_end() -> bool {
     APU.offset(0xC).write(0b110000);
     APU.offset(0xE).write(0);
     false
@@ -81,7 +80,7 @@ pub fn run_sfx() {
                         ..=5 => { sfx_frame(PULSE1, 1, 0x7C, 0b10111111) },
                         ..=10 => { sfx_frame(PULSE1, 1, 0xc4, 0b10111111) },
                         ..=15 => { sfx_frame(PULSE1, 0, 0xbf, 0b10111111) },
-                        _ => { PULSE1.offset(3).write_volatile(7); sfx_end(PULSE1) }
+                        _ => { PULSE1.offset(3).write(7); sfx_end(PULSE1) }
                     }
                 },
                 Sfx::MenuBoop => {
@@ -115,7 +114,7 @@ pub fn run_sfx() {
                     const NOTES: &[u8] = &[0xfb,0xc4,0x93,0x67,0x3f,0x1c];
 
                     if SFX_OFF / 4 >= NOTES.len() {
-                        PULSE1.offset(3).write_volatile(7);
+                        PULSE1.offset(3).write(7);
                         sfx_end(PULSE1)
                     } else {
                         sfx_frame(PULSE1, 1, NOTES[SFX_OFF/4], 0b10111111)
