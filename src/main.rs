@@ -16,6 +16,7 @@ mod utils;
 #[start]
 fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     apu::init();
+    let mut apu = apu::APU::default();
     game::init();
 
     ppu::enable_nmi();
@@ -23,8 +24,9 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     loop {
         io::wait_for_vblank();
         sprites::clear();
+        apu.run_sfx();
         //apu::run_sfx();
-        game::frame();
+        game::frame(&mut apu);
     }
 }
 

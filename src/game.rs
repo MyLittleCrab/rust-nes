@@ -30,10 +30,9 @@ pub fn init() {
     });
 }
 
-pub fn frame() {
+pub fn frame(apu: &mut apu::APU) {
     let game = state();
-    game.apu.run_sfx();
-    game.step();
+    game.step(apu);
 
     sprites::add(TOP_MARGIN + game.ball.x, LEFT_MARGIN + game.ball.y -1, 0x80, 0);
     for i in 0..game.paddle.width {
@@ -106,7 +105,6 @@ struct Game {
     ball: Ball,
     bricks: [Brick; 140],
     destroyed: [Option<u8>; 4],
-    apu: apu::APU
 }
 
 const BRICKS_POS: [(u8, u8); 140] = {
@@ -133,7 +131,6 @@ impl Game {
             paddle: Paddle { x: WIDTH / 2, y: HEIGHT - 10, width: 7 },
             bricks: [Brick::Empty; 140],
             destroyed: [None; 4],
-            apu: apu::APU::default(),
         };
 
         for i in 0..140 {
@@ -149,7 +146,7 @@ impl Game {
         game
     }
 
-    fn step(&mut self) {
+    fn step(&mut self, apu: &mut apu::APU) {
         let buttons = io::controller_buttons();
 
         if self.ball.dy == 0 {
@@ -214,7 +211,7 @@ impl Game {
                     // rollback if collide
                     self.ball.x = old_x;
                     self.ball.y = old_y;
-                    self.apu.play_sfx(apu::Sfx::MenuBoop);
+                    apu.play_sfx(apu::Sfx::MenuBoop);
                     break;
                 }
             }
@@ -223,21 +220,21 @@ impl Game {
         // Screen collision
         if self.ball.x == 0 || self.ball.x + BALL_DIAMETER >= WIDTH {
             self.ball.dx = -self.ball.dx;
-            self.apu.play_sfx(apu::Sfx::Lock);
+            apu.play_sfx(apu::Sfx::Lock);
         }
         if self.ball.y == 0  {
             self.ball.dy = -self.ball.dy;
-            self.apu.play_sfx(apu::Sfx::Lock);
+            apu.play_sfx(apu::Sfx::Lock);
         }
         // paddle collision
         if self.ball.y + BALL_DIAMETER >= self.paddle.y {
             if self.ball.x + BALL_RADIUS > self.paddle.x && self.ball.x + BALL_RADIUS < self.paddle.x + (self.paddle.width * 8) {
                 self.ball.dy = -self.ball.dy;
-                self.apu.play_sfx(apu::Sfx::Lock);
+                apu.play_sfx(apu::Sfx::Lock);
             } else {
                 self.ball.dx = 0;
                 self.ball.dy = 0;
-                self.apu.play_sfx(apu::Sfx::Topout);
+                apu.play_sfx(apu::Sfx::Topout);
             }
         }
     }
