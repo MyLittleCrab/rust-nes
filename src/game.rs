@@ -1,4 +1,4 @@
-use crate::{ppu, sprites, apu, io};
+use crate::{apu, io, ppu, sprites};
 
 // statically allocated memory
 static mut STATE: Option<Game> = None;
@@ -10,7 +10,9 @@ fn state() -> &'static mut Game {
 }
 
 pub fn init() {
-    unsafe { STATE = Some(Game::new()); }
+    unsafe {
+        STATE = Some(Game::new());
+    }
 
     // palettes and border
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0D, 0x36, 0x16, 0x23]);
@@ -34,9 +36,19 @@ pub fn frame(apu: &mut apu::APU) {
     let game = state();
     game.step(apu);
 
-    sprites::add(TOP_MARGIN + game.ball.x, LEFT_MARGIN + game.ball.y -1, 0x80, 0);
+    sprites::add(
+        TOP_MARGIN + game.ball.x,
+        LEFT_MARGIN + game.ball.y - 1,
+        0x80,
+        0,
+    );
     for i in 0..game.paddle.width {
-        sprites::add(TOP_MARGIN + game.paddle.x + (i * 8), LEFT_MARGIN + game.paddle.y -1, 0x87, 0);
+        sprites::add(
+            TOP_MARGIN + game.paddle.x + (i * 8),
+            LEFT_MARGIN + game.paddle.y - 1,
+            0x87,
+            0,
+        );
     }
 }
 
@@ -83,11 +95,25 @@ const BALL_RADIUS: u8 = BALL_DIAMETER / 2;
 const LEFT_MARGIN: u8 = 16;
 const TOP_MARGIN: u8 = 16;
 
-struct Ball { x: u8, y: u8, dx: i8, dy: i8 }
-struct Paddle { x: u8, y: u8, width: u8 }
+struct Ball {
+    x: u8,
+    y: u8,
+    dx: i8,
+    dy: i8,
+}
+struct Paddle {
+    x: u8,
+    y: u8,
+    width: u8,
+}
 
 #[derive(Copy, Clone, PartialEq)]
-enum Brick { Empty, A, B, C }
+enum Brick {
+    Empty,
+    A,
+    B,
+    C,
+}
 
 impl Brick {
     fn as_tile(&self) -> u8 {
@@ -127,8 +153,17 @@ const BRICKS_POS: [(u8, u8); 140] = {
 impl Game {
     fn new() -> Self {
         let mut game = Self {
-            ball: Ball { x: 0, y: HEIGHT / 2, dx: 2, dy: -1 },
-            paddle: Paddle { x: WIDTH / 2, y: HEIGHT - 10, width: 7 },
+            ball: Ball {
+                x: 0,
+                y: HEIGHT / 2,
+                dx: 2,
+                dy: -1,
+            },
+            paddle: Paddle {
+                x: WIDTH / 2,
+                y: HEIGHT - 10,
+                width: 7,
+            },
             bricks: [Brick::Empty; 140],
             destroyed: [None; 4],
         };
@@ -156,12 +191,12 @@ impl Game {
                 init();
                 ppu::enable_nmi();
             }
-            return
+            return;
         }
 
         if buttons & io::LEFT != 0 && self.paddle.x > 1 {
             self.paddle.x -= 2;
-        } else if buttons & io::RIGHT != 0  && self.paddle.x + self.paddle.width * 8 < 0xe0 {
+        } else if buttons & io::RIGHT != 0 && self.paddle.x + self.paddle.width * 8 < 0xe0 {
             self.paddle.x += 2;
         }
 
@@ -171,15 +206,16 @@ impl Game {
         self.ball.x = (self.ball.x as i8 + self.ball.dx) as u8;
         self.ball.y = (self.ball.y as i8 + self.ball.dy) as u8;
 
-
         // brick collision
         for (i, brick) in self.bricks.iter_mut().enumerate() {
             if *brick != Brick::Empty {
                 let (brick_x, brick_y) = BRICKS_POS[i];
 
-                if self.ball.y > brick_y && self.ball.y < brick_y + BRICK_HEIGHT &&
-                self.ball.x >= brick_x && self.ball.x <= brick_x + BRICK_WIDTH {
-
+                if self.ball.y > brick_y
+                    && self.ball.y < brick_y + BRICK_HEIGHT
+                    && self.ball.x >= brick_x
+                    && self.ball.x <= brick_x + BRICK_WIDTH
+                {
                     let brick_x = brick_x as i16;
                     let brick_y = brick_y as i16;
                     let x = self.ball.x as i16;
@@ -202,7 +238,9 @@ impl Game {
                         self.ball.dy = -self.ball.dy;
                     }
 
-                    let pos = self.destroyed.iter()
+                    let pos = self
+                        .destroyed
+                        .iter()
                         .position(|&item| item == None)
                         .unwrap_or(0);
 
@@ -222,13 +260,15 @@ impl Game {
             self.ball.dx = -self.ball.dx;
             apu.play_sfx(apu::Sfx::Lock);
         }
-        if self.ball.y == 0  {
+        if self.ball.y == 0 {
             self.ball.dy = -self.ball.dy;
             apu.play_sfx(apu::Sfx::Lock);
         }
         // paddle collision
         if self.ball.y + BALL_DIAMETER >= self.paddle.y {
-            if self.ball.x + BALL_RADIUS > self.paddle.x && self.ball.x + BALL_RADIUS < self.paddle.x + (self.paddle.width * 8) {
+            if self.ball.x + BALL_RADIUS > self.paddle.x
+                && self.ball.x + BALL_RADIUS < self.paddle.x + (self.paddle.width * 8)
+            {
                 self.ball.dy = -self.ball.dy;
                 apu.play_sfx(apu::Sfx::Lock);
             } else {

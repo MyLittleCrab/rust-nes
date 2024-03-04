@@ -3,10 +3,10 @@
 #![allow(unused_imports, dead_code)]
 
 mod apu;
+mod game;
 mod io;
 mod ppu;
 mod sprites;
-mod game;
 mod utils;
 
 // fixed memory usage;
@@ -31,14 +31,13 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
 }
 
 #[no_mangle]
-pub extern "C" fn render()  {
+pub extern "C" fn render() {
     io::poll_controller();
     sprites::dma();
     game::render();
     ppu::write_addr(0x2000);
     ppu::scroll(0, 0);
 }
-
 
 #[link_section = ".chr_rom"]
 #[no_mangle]

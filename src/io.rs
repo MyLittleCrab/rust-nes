@@ -8,7 +8,9 @@ pub fn wait_for_vblank() {
 }
 
 pub fn _set_chr_bank(bank: u8) {
-    unsafe { *(0x8000 as *mut u8) = bank; }
+    unsafe {
+        *(0x8000 as *mut u8) = bank;
+    }
 }
 
 pub const RIGHT: u8 = 0x01;

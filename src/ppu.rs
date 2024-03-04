@@ -1,4 +1,4 @@
-use crate::utils::{write, read, Addr};
+use crate::utils::{read, write, Addr};
 
 pub const CTRL_VRAM_INC: u8 = 0b100;
 pub const _CTRL_NMI: u8 = 0b10000000;
@@ -80,27 +80,27 @@ pub fn draw_box(x: u8, y: u8, w: u8, h: u8) {
     // -
     write_addr(offset);
     write_data(BOX_TILES);
-    for _ in 0..w-2 {
+    for _ in 0..w - 2 {
         write_data(BOX_TILES + 5);
     }
     write_data(BOX_TILES + 1);
     // |
     write_addr(offset + 0x20);
     or_ctrl(CTRL_VRAM_INC);
-    for _ in 0..h-2 {
+    for _ in 0..h - 2 {
         write_data(BOX_TILES + 4);
     }
     write_data(BOX_TILES + 2);
     // |
     write_addr(offset + 0x20 + w as u16 - 1);
-    for _ in 0..h-2 {
+    for _ in 0..h - 2 {
         write_data(BOX_TILES + 4);
     }
     write_data(BOX_TILES + 3);
     and_ctrl(!CTRL_VRAM_INC);
     // _
     write_addr(offset + ((h as u16 - 1) * 0x20) + 1);
-    for _ in 0..w-2 {
+    for _ in 0..w - 2 {
         write_data(BOX_TILES + 5);
     }
 }

@@ -16,9 +16,13 @@ pub fn dma() {
 pub fn clear() {
     let oam = ADDR as *mut u8;
     for i in 0..256 {
-        unsafe { *oam.offset(i) = 0; }
+        unsafe {
+            *oam.offset(i) = 0;
+        }
     }
-    unsafe { INDEX = 0; }
+    unsafe {
+        INDEX = 0;
+    }
 }
 
 #[allow(dead_code)]
