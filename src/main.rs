@@ -23,7 +23,7 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     loop {
         io::wait_for_vblank();
         sprites::clear();
-        apu::run_sfx();
+        //apu::run_sfx();
         game::frame();
     }
 }

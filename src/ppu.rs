@@ -2,25 +2,24 @@ use crate::utils::{write, read, Addr};
 
 pub const CTRL_VRAM_INC: u8 = 0b100;
 pub const _CTRL_NMI: u8 = 0b10000000;
+pub const PPU_CTRL: Addr = Addr(0x2000);
 
 pub fn write_ctrl(value: u8) {
-    write(0x2000 as *mut u8, value)
+    PPU_CTRL.write(value)
 }
 
 pub fn and_ctrl(value: u8) {
-    let p = Addr(0x2000);
-    let next = p.read() & value;
-    p.write(next);
+    let next = PPU_CTRL.read() & value;
+    PPU_CTRL.write(next);
 }
 
 pub fn or_ctrl(value: u8) {
-    let p = 0x2000 as *mut u8;
-    let next = read(p) | value;
-    write(p, next);
+    let next = PPU_CTRL.read() | value;
+    PPU_CTRL.write(next);
 }
 
 pub fn write_mask(value: u8) {
-    let p = Addr::from(0x2001);
+    let p = Addr(0x2001);
     p.write(value);
 }
 
@@ -53,7 +52,7 @@ pub fn disable_nmi() {
 
 #[inline(never)]
 pub fn clear_nametable() {
-    write_addr(0x2000);
+    write_addr(PPU_CTRL.addr());
     for _ in 0..0x400 {
         write_data(0);
     }

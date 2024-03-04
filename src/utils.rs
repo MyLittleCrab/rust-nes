@@ -30,9 +30,10 @@ impl Addr {
         }
     }
     pub fn offset(self, count: isize) -> Self {
-        unsafe {
-            Addr(self.0 + (count as u16))
-        }
+        Addr(self.0 + (count as u16))
+    }
+    pub fn addr(self) -> u16 {
+        return self.0
     }
 }
 
