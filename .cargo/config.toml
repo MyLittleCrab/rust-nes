@@ -1,7 +1,7 @@
 [build]
-target = "mos-nes-cnrom-none"
+target = "mos-nes-cnrom"
 
-[target.mos-nes-cnrom-none]
+[target.mos-nes-cnrom]
 rustflags = [
     "-C", "link-arg=-Tsrc/link.ld",
     "-C", "link-arg=-Wl,--verbose",

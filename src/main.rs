@@ -7,6 +7,7 @@ mod io;
 mod ppu;
 mod sprites;
 mod game;
+mod utils;
 
 // fixed memory usage;
 // 0x80 - nmi check bit

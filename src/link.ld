@@ -103,6 +103,7 @@ __prg_rom_offset = 0;
 MEMORY { prg_rom (rx) : ORIGIN = __prg_rom_lma, LENGTH = __prg_rom_size * 1024 }
 
 REGION_ALIAS("c_rom", prg_rom)
+REGION_ALIAS("c_readonly", prg_rom)
 REGION_ALIAS("c_rom_lma", prg_rom)
 REGION_ALIAS("c_rom_vma", prg_rom)
 

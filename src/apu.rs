@@ -1,6 +1,6 @@
 // https://www.nesdev.org/wiki/APU_basics
-
-const APU: *mut u8 = 0x4000 as *mut u8;
+use crate::utils::{read, write, Addr};
+const APU: Addr = Addr(0x4000 as *mut u8);
 const PULSE1: *mut u8 = 0x4000 as *mut u8;
 #[allow(dead_code)]
 const PULSE2: *mut u8 = 0x4004 as *mut u8;
@@ -25,7 +25,6 @@ pub enum Sfx {
 
 
 pub fn init() {
-    unsafe {
         [
             0x30,0x08,0x00,0x00,
             0x30,0x08,0x00,0x00,
@@ -37,7 +36,6 @@ pub fn init() {
         });
         *APU.offset(0x15) = 0xF;
         *APU.offset(0x17) = 0x40;
-    }
 }
 
 pub fn play_sfx(type_: Sfx) {
@@ -48,28 +46,29 @@ pub fn play_sfx(type_: Sfx) {
 }
 
 unsafe fn sfx_frame(p: *mut u8, hi: u8, lo: u8, dcvol: u8) -> bool {
-    p.offset(2).write_volatile(lo);
-    p.offset(3).write_volatile(hi); // only lower 3 bits matter
-    p.write_volatile(dcvol);
+    let p = Addr(p);
+    p.offset(2).write(lo);
+    p.offset(3).write(hi); // only lower 3 bits matter
+    p.write(dcvol);
     true
 }
 
-unsafe fn sfx_end(p: *mut u8) -> bool {
-    p.write_volatile(0);
+fn sfx_end(p: *mut u8) -> bool {
+    write(p, 0);
     false
 }
 
 #[allow(dead_code)]
 unsafe fn noise_frame(tp: u8, vol: u8) -> bool {
-    APU.offset(0xC).write_volatile(vol);
-    APU.offset(0xE).write_volatile(tp);
+    APU.offset(0xC).write(vol);
+    APU.offset(0xE).write(tp);
     true
 }
 
 #[allow(dead_code)]
 unsafe fn noise_end() -> bool {
-    APU.offset(0xC).write_volatile(0b110000);
-    APU.offset(0xE).write_volatile(0);
+    APU.offset(0xC).write(0b110000);
+    APU.offset(0xE).write(0);
     false
 }
 

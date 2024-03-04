@@ -1,57 +1,44 @@
+use crate::utils::{write, read, Addr};
+
 pub const CTRL_VRAM_INC: u8 = 0b100;
 pub const _CTRL_NMI: u8 = 0b10000000;
 
 pub fn write_ctrl(value: u8) {
-    let p = 0x2000 as *mut u8;
-    unsafe {
-        core::ptr::write_volatile(p, value);
-    }
+    write(0x2000 as *mut u8, value)
 }
 
 pub fn and_ctrl(value: u8) {
     let p = 0x2000 as *mut u8;
-    unsafe {
-        let next = core::ptr::read_volatile(p) & value;
-        core::ptr::write_volatile(p, next);
-    }
+    let next = Addr(p).read() & value;
+    write(p, next);
 }
 
 pub fn or_ctrl(value: u8) {
     let p = 0x2000 as *mut u8;
-    unsafe {
-        let next = core::ptr::read_volatile(p) | value;
-        core::ptr::write_volatile(p, next);
-    }
+    let next = read(p) | value;
+    write(p, next);
 }
 
 pub fn write_mask(value: u8) {
-    let p = 0x2001 as *mut u8;
-    unsafe {
-        core::ptr::write_volatile(p, value);
-    }
+    let p = Addr::from(0x2001);
+    p.write(value);
 }
 
 pub fn write_addr(value: u16) {
     let p = 0x2006 as *mut u8;
-    unsafe {
-        core::ptr::write_volatile(p, (value >> 8) as u8);
-        core::ptr::write_volatile(p, value as u8);
-    }
+    write(p, (value >> 8) as u8);
+    write(p, value as u8);
 }
 
 pub fn write_data(value: u8) {
     let p = 0x2007 as *mut u8;
-    unsafe {
-        core::ptr::write_volatile(p, value);
-    }
+    write(p, value);
 }
 
 pub fn scroll(x: u8, y: u8) {
     let p = 0x2005 as *mut u8;
-    unsafe {
-        core::ptr::write_volatile(p, x);
-        core::ptr::write_volatile(p, y);
-    }
+    write(p, x);
+    write(p, y);
 }
 
 pub fn enable_nmi() {
