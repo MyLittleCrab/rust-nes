@@ -2,6 +2,8 @@
 #![feature(start)]
 #![allow(unused_imports, dead_code)]
 
+use sprites::SpriteState;
+
 mod apu;
 mod game;
 mod io;
@@ -17,16 +19,16 @@ mod utils;
 fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     apu::init();
     let mut apu = apu::APU::default();
+    let mut sprites = SpriteState::default();
     game::init();
 
     ppu::enable_nmi();
 
     loop {
         io::wait_for_vblank();
-        sprites::clear();
+        sprites.clear();
         apu.run_sfx();
-        //apu::run_sfx();
-        game::frame(&mut apu);
+        game::frame(&mut apu, &mut sprites);
     }
 }
 
@@ -35,8 +37,7 @@ pub extern "C" fn render() {
     io::poll_controller();
     sprites::dma();
     game::render();
-    ppu::write_addr(0x2000);
-    ppu::scroll(0, 0);
+    ppu::reset();
 }
 
 #[link_section = ".chr_rom"]

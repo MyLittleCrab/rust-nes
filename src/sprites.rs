@@ -1,28 +1,38 @@
 use crate::ppu;
+use crate::utils::Addr;
 
-const ADDR: u16 = 0x200;
-static mut INDEX: isize = 0;
+const ADDR: Addr = Addr(0x200);
+const OAM_DMA: Addr = Addr(0x4014);
+const OAM_ADDR: Addr = Addr(0x2003);
 
-pub fn dma() {
-    let oamdma = 0x4014 as *mut u8;
-    let oamaddr = 0x2003 as *mut u8;
-
-    unsafe {
-        core::ptr::write_volatile(oamaddr, 0);
-        core::ptr::write_volatile(oamdma, (ADDR >> 8) as u8);
+pub struct SpriteState {
+    index: isize,
+}
+impl Default for SpriteState {
+    fn default() -> Self {
+        Self { index: 0 }
+    }
+}
+impl SpriteState {
+    pub fn clear(&mut self) {
+        for i in 0..256 {
+            *ADDR.offset(i) = 0;
+        }
+        self.index = 0;
+    }
+    pub fn add(&mut self, x: u8, y: u8, tile: u8, attr: u8) {
+        // attr is palette + flags
+        *ADDR.offset(self.index) = y;
+        *ADDR.offset(self.index + 1) = tile;
+        *ADDR.offset(self.index + 2) = attr;
+        *ADDR.offset(self.index + 3) = x;
+        self.index += 4;
     }
 }
 
-pub fn clear() {
-    let oam = ADDR as *mut u8;
-    for i in 0..256 {
-        unsafe {
-            *oam.offset(i) = 0;
-        }
-    }
-    unsafe {
-        INDEX = 0;
-    }
+pub fn dma() {
+    OAM_ADDR.write(0);
+    OAM_DMA.write((ADDR.addr() >> 8) as u8);
 }
 
 #[allow(dead_code)]
@@ -31,15 +41,3 @@ pub const PRIORITY: u8 = 0b100000;
 pub const HFLIP: u8 = 0b1000000;
 #[allow(dead_code)]
 pub const VFLIP: u8 = 0b10000000;
-
-pub fn add(x: u8, y: u8, tile: u8, attr: u8) {
-    // attr is palette + flags
-    let oam = ADDR as *mut u8;
-    unsafe {
-        *oam.offset(INDEX) = y;
-        *oam.offset(INDEX + 1) = tile;
-        *oam.offset(INDEX + 2) = attr;
-        *oam.offset(INDEX + 3) = x;
-        INDEX += 4;
-    }
-}

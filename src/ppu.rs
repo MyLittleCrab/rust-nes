@@ -1,9 +1,18 @@
-use crate::utils::{read, write, Addr};
+use crate::utils::Addr;
 
-pub const CTRL_VRAM_INC: u8 = 0b100;
-pub const _CTRL_NMI: u8 = 0b10000000;
-pub const PPU_CTRL: Addr = Addr(0x2000);
+const CTRL_VRAM_INC: u8 = 0b100;
+const _CTRL_NMI: u8 = 0b10000000;
+const PPU_CTRL: Addr = Addr(0x2000);
+const PPU_MASK: Addr = Addr(0x2001);
+const PPU_STATUS: Addr = Addr(0x2002);
+const PPU_SCROLL: Addr = Addr(0x2005);
+const PPU_ADDR: Addr = Addr(0x2006);
+const PPU_DATA: Addr = Addr(0x2007);
 
+pub fn reset() {
+    write_addr(PPU_CTRL.addr());
+    scroll(0, 0);
+}
 pub fn write_ctrl(value: u8) {
     PPU_CTRL.write(value)
 }
@@ -19,25 +28,21 @@ pub fn or_ctrl(value: u8) {
 }
 
 pub fn write_mask(value: u8) {
-    let p = Addr(0x2001);
-    p.write(value);
+    PPU_MASK.write(value);
 }
 
 pub fn write_addr(value: u16) {
-    let p = 0x2006 as *mut u8;
-    write(p, (value >> 8) as u8);
-    write(p, value as u8);
+    PPU_ADDR.write((value >> 8) as u8);
+    PPU_ADDR.write(value as u8);
 }
 
 pub fn write_data(value: u8) {
-    let p = 0x2007 as *mut u8;
-    write(p, value);
+    PPU_DATA.write(value);
 }
 
 pub fn scroll(x: u8, y: u8) {
-    let p = 0x2005 as *mut u8;
-    write(p, x);
-    write(p, y);
+    PPU_SCROLL.write(x);
+    PPU_SCROLL.write(y)
 }
 
 pub fn enable_nmi() {

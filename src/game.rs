@@ -1,4 +1,7 @@
-use crate::{apu, io, ppu, sprites};
+use crate::{
+    apu, io, ppu,
+    sprites::{self, SpriteState},
+};
 
 // statically allocated memory
 static mut STATE: Option<Game> = None;
@@ -32,18 +35,18 @@ pub fn init() {
     });
 }
 
-pub fn frame(apu: &mut apu::APU) {
+pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     let game = state();
     game.step(apu);
 
-    sprites::add(
+    sprites.add(
         TOP_MARGIN + game.ball.x,
         LEFT_MARGIN + game.ball.y - 1,
         0x80,
         0,
     );
     for i in 0..game.paddle.width {
-        sprites::add(
+        sprites.add(
             TOP_MARGIN + game.paddle.x + (i * 8),
             LEFT_MARGIN + game.paddle.y - 1,
             0x87,
@@ -126,18 +129,21 @@ impl Brick {
     }
 }
 
+const N_BRICKS: usize = 140;
+
 struct Game {
     paddle: Paddle,
     ball: Ball,
-    bricks: [Brick; 140],
+    bricks: [Brick; N_BRICKS],
     destroyed: [Option<u8>; 4],
 }
 
-const BRICKS_POS: [(u8, u8); 140] = {
-    let mut pos = [(0u8, 0u8); 140];
+
+const BRICKS_POS: [(u8, u8); N_BRICKS] = {
+    let mut pos = [(0u8, 0u8); N_BRICKS];
 
     let mut brick_index = 0;
-    while brick_index < 140 {
+    while brick_index < N_BRICKS {
         let i = brick_index as u8;
         let brick_y = i / BRICKS_WIDE as u8;
         let brick_x = i % BRICKS_WIDE as u8;
@@ -164,11 +170,11 @@ impl Game {
                 y: HEIGHT - 10,
                 width: 7,
             },
-            bricks: [Brick::Empty; 140],
+            bricks: [Brick::Empty; N_BRICKS],
             destroyed: [None; 4],
         };
 
-        for i in 0..140 {
+        for i in 0..N_BRICKS {
             cycle_rng();
             game.bricks[i] = match get_rng() % 3 {
                 0 => Brick::A,
