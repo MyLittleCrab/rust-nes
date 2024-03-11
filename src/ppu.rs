@@ -70,9 +70,16 @@ pub fn draw_text(text: &str) {
     }
 }
 
+// #[inline(never)]
+// pub fn draw_u8_text(text: [u8 ; n]) {
+//     for ch in text.chars() {
+//         write_data(ch as u8 - 32);
+//     }
+// }
+
 #[inline(never)]
 pub fn draw_ascii(off: u16, ascii: &str) {
-    for (i, line) in ascii[1..].split("\n").enumerate() {
+    for (i, line) in ascii.split("\n").enumerate() {
         write_addr(off + (0x20 * i as u16));
         draw_text(line);
     }

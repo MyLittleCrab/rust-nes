@@ -44,3 +44,24 @@ pub fn poll_controller() {
 pub fn controller_buttons() -> u8 {
     unsafe { BUTTONS }
 }
+
+pub fn byte_to_digits(b: u8) -> [u8; 2] {
+    let d1 = b / 0x10;
+    let d0 = b % 0x10;
+    [d0, d1]
+}
+pub fn u16_to_digits(x: u16) -> [u8; 4] {
+    let d10 = byte_to_digits(x as u8);
+    let d32 = byte_to_digits((x / 0x100) as u8);
+    [d32[1], d32[0], d10[1], d10[0]]
+}
+
+pub fn digit_to_ascii(b: u8) -> u8 {
+    if b < 10 {
+        65 - 19 + b + 2
+    } else {
+        65 - 2 + b - 10 + 2
+        //0x60
+    }
+    
+}

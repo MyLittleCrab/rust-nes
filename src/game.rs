@@ -12,28 +12,80 @@ fn state() -> &'static mut Game {
     unsafe { STATE.as_mut().unwrap() }
 }
 
+enum Tile {
+    Nothing,
+    Wall
+}
+const w: Tile = Tile::Wall;
+const n: Tile = Tile::Nothing;
+
+const walls: [Tile ; 0x180] = [
+    w, w, w, w, w, w, w, w, w, w, w, w, w, w, w, w,
+    w, w, w, w, w, w, w, w, w, w, w, w, w, w, w, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, w, w, w, w, w, w, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+
+    w, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n,
+    n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, w,
+];
+
+const ORIGIN: u16 = 0x2020;
+const WALL_SPRITE: u8 = 0x60;
+const AT_SPRITE: u8 = 0x59;
+
 pub fn init() {
     unsafe {
         STATE = Some(Game::new());
     }
 
     // palettes and border
-    ppu::write_bytes(ppu::PAL_BG_0, &[0x0D, 0x36, 0x16, 0x23]);
-    ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x30]);
-    ppu::draw_box(1, 1, 30, 28);
+    ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
+    ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);
+    //ppu::draw_box(1, 1, 30, 28);
 
-    // bricks
-    let mut addr = 0x2082;
-    state().bricks.chunks(BRICKS_WIDE).for_each(|bricks| {
-        ppu::write_addr(addr);
-        bricks.iter().for_each(|brick| {
-            let tile = brick.as_tile();
-            ppu::write_data(tile);
-            ppu::write_data(tile + 1);
-        });
-        addr += 0x20;
-    });
+    ppu::write_addr(ORIGIN);
+    let row: u16 = 0x20;
+    for tile in walls {
+        //ppu::write_addr(origin + row * i);
+        match tile {
+            Tile::Nothing => ppu::write_data(0x00),
+            Tile::Wall => ppu::write_data(0x60)
+        }
+    }
+    
+    // text
+    ppu::draw_ascii(0x20a3, "HEART-MAN");
 }
+
+const HEART: u8 = 0x63;
 
 pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     let game = state();
@@ -49,7 +101,7 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
         sprites.add(
             TOP_MARGIN + game.paddle.x + (i * 8),
             LEFT_MARGIN + game.paddle.y - 1,
-            0x87,
+            HEART,
             0,
         );
     }
@@ -57,21 +109,24 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
 
 pub fn render() {
     let game = state();
-
-    game.destroyed.iter_mut().for_each(|des| {
-        if des.is_some() {
-            let index = des.unwrap();
-            *des = None;
-
-            let y_addr = (index / BRICKS_WIDE as u8) as u16 * 0x20;
-            let x_addr = (index % BRICKS_WIDE as u8) as u16 * 2;
-            let addr = 0x2082 + y_addr + x_addr;
-
-            ppu::write_addr(addr);
-            ppu::write_data(0);
-            ppu::write_data(0);
-        }
-    });
+    //ppu::draw_ascii(0x20a3, "HEART-MEN");
+    // place tile at heart pos
+    let index = map_pos_to_tile_index(game.paddle.x, game.paddle.y);
+    ppu::write_addr(ORIGIN + index);
+    ppu::write_data(HEART);
+    // let digits = io::u16_to_digits(index as u16);
+    // ppu::write_addr(ORIGIN);
+    // for x in digits {
+    //     ppu::write_data(io::digit_to_ascii(x) - 32);
+    // }
+    ppu::write_addr(ORIGIN);
+    for x in io::byte_to_digits(game.paddle.x) {
+        ppu::write_data(io::digit_to_ascii(x) - 32);
+    }
+    ppu::write_addr(ORIGIN + 3);
+    for x in io::byte_to_digits(game.paddle.y) {
+        ppu::write_data(io::digit_to_ascii(x) - 32);
+    }
 }
 
 // game logic
@@ -110,55 +165,16 @@ struct Paddle {
     width: u8,
 }
 
-#[derive(Copy, Clone, PartialEq)]
-enum Brick {
-    Empty,
-    A,
-    B,
-    C,
-}
-
-impl Brick {
-    fn as_tile(&self) -> u8 {
-        match self {
-            Brick::A => 0x81,
-            Brick::B => 0x83,
-            Brick::C => 0x85,
-            Brick::Empty => 0,
-        }
-    }
-}
-
-const N_BRICKS: usize = 140;
 
 struct Game {
     paddle: Paddle,
     ball: Ball,
-    bricks: [Brick; N_BRICKS],
-    destroyed: [Option<u8>; 4],
 }
 
 
-const BRICKS_POS: [(u8, u8); N_BRICKS] = {
-    let mut pos = [(0u8, 0u8); N_BRICKS];
-
-    let mut brick_index = 0;
-    while brick_index < N_BRICKS {
-        let i = brick_index as u8;
-        let brick_y = i / BRICKS_WIDE as u8;
-        let brick_x = i % BRICKS_WIDE as u8;
-        let brick_y = (brick_y * BRICK_HEIGHT) + (TOP_BRICK_MARGIN as u8 * BRICK_HEIGHT);
-        let brick_x = (brick_x as u16 * BRICK_WIDTH as u16) as u8;
-        pos[brick_index] = (brick_x, brick_y);
-
-        brick_index += 1;
-    }
-    pos
-};
-
 impl Game {
     fn new() -> Self {
-        let mut game = Self {
+        let game = Self {
             ball: Ball {
                 x: 0,
                 y: HEIGHT / 2,
@@ -168,21 +184,9 @@ impl Game {
             paddle: Paddle {
                 x: WIDTH / 2,
                 y: HEIGHT - 10,
-                width: 7,
+                width: 1,
             },
-            bricks: [Brick::Empty; N_BRICKS],
-            destroyed: [None; 4],
         };
-
-        for i in 0..N_BRICKS {
-            cycle_rng();
-            game.bricks[i] = match get_rng() % 3 {
-                0 => Brick::A,
-                1 => Brick::B,
-                2 => Brick::C,
-                _ => unreachable!(),
-            };
-        }
 
         game
     }
@@ -190,98 +194,52 @@ impl Game {
     fn step(&mut self, apu: &mut apu::APU) {
         let buttons = io::controller_buttons();
 
-        if self.ball.dy == 0 {
-            // dead
-            if buttons & io::START != 0 {
-                ppu::disable_nmi();
-                init();
-                ppu::enable_nmi();
-            }
-            return;
-        }
+        let delta_x: i8 = 0
+        let delta_y: i8 = 0
+        if self.paddle.x 
 
-        if buttons & io::LEFT != 0 && self.paddle.x > 1 {
+        if buttons & io::LEFT != 0 && self.paddle.x > 0 {
             self.paddle.x -= 2;
-        } else if buttons & io::RIGHT != 0 && self.paddle.x + self.paddle.width * 8 < 0xe0 {
+        } else if buttons & io::RIGHT != 0 && self.paddle.x + self.paddle.width * 8 < 0xe8 {
             self.paddle.x += 2;
+        }
+        if buttons & io::UP != 0 && self.paddle.y > 0 {
+            self.paddle.y -= 2;
+        } else if buttons & io::DOWN != 0 && self.paddle.y + self.paddle.width * 8 < 0xe8 {
+            self.paddle.y += 2;
         }
 
         // collision
-        let old_x = self.ball.x;
-        let old_y = self.ball.y;
         self.ball.x = (self.ball.x as i8 + self.ball.dx) as u8;
         self.ball.y = (self.ball.y as i8 + self.ball.dy) as u8;
-
-        // brick collision
-        for (i, brick) in self.bricks.iter_mut().enumerate() {
-            if *brick != Brick::Empty {
-                let (brick_x, brick_y) = BRICKS_POS[i];
-
-                if self.ball.y > brick_y
-                    && self.ball.y < brick_y + BRICK_HEIGHT
-                    && self.ball.x >= brick_x
-                    && self.ball.x <= brick_x + BRICK_WIDTH
-                {
-                    let brick_x = brick_x as i16;
-                    let brick_y = brick_y as i16;
-                    let x = self.ball.x as i16;
-                    let y = self.ball.y as i16;
-                    let r = BALL_RADIUS as i16;
-
-                    let dist_left = (x + r) - brick_x;
-                    let dist_right = brick_x + BRICK_WIDTH as i16 - (x + r);
-                    let dist_top = (y + r) - brick_y;
-                    let dist_bottom = brick_y + BRICK_HEIGHT as i16 - (y + r);
-
-                    let hit_left = dist_left < r;
-                    let hit_right = dist_right < r;
-                    let hit_top = dist_top < r;
-                    let hit_bottom = dist_bottom < r;
-
-                    if hit_left || hit_right {
-                        self.ball.dx = -self.ball.dx;
-                    } else if hit_top || hit_bottom {
-                        self.ball.dy = -self.ball.dy;
-                    }
-
-                    let pos = self
-                        .destroyed
-                        .iter()
-                        .position(|&item| item == None)
-                        .unwrap_or(0);
-
-                    self.destroyed[pos] = Some(i as u8);
-                    *brick = Brick::Empty;
-                    // rollback if collide
-                    self.ball.x = old_x;
-                    self.ball.y = old_y;
-                    apu.play_sfx(apu::Sfx::MenuBoop);
-                    break;
-                }
-            }
-        }
 
         // Screen collision
         if self.ball.x == 0 || self.ball.x + BALL_DIAMETER >= WIDTH {
             self.ball.dx = -self.ball.dx;
             apu.play_sfx(apu::Sfx::Lock);
         }
-        if self.ball.y == 0 {
+        if self.ball.y == 0 || self.ball.y + BALL_DIAMETER >= HEIGHT {
             self.ball.dy = -self.ball.dy;
             apu.play_sfx(apu::Sfx::Lock);
         }
         // paddle collision
-        if self.ball.y + BALL_DIAMETER >= self.paddle.y {
-            if self.ball.x + BALL_RADIUS > self.paddle.x
-                && self.ball.x + BALL_RADIUS < self.paddle.x + (self.paddle.width * 8)
-            {
-                self.ball.dy = -self.ball.dy;
-                apu.play_sfx(apu::Sfx::Lock);
-            } else {
-                self.ball.dx = 0;
-                self.ball.dy = 0;
-                apu.play_sfx(apu::Sfx::Topout);
-            }
+        let y_delta = self.ball.y as i8 - self.paddle.y as i8;
+        let x_delta = self.ball.x as i8 - self.paddle.x as i8;
+        if (y_delta.abs() as u8) < self.paddle.width * 8 + BALL_DIAMETER &&
+        (x_delta.abs() as u8) < self.paddle.width * 8 + BALL_DIAMETER {
+            self.ball.dy = self.ball.dy.abs() * y_delta.signum();
+            self.ball.dx = self.ball.dx.abs() * x_delta.signum();
+            apu.play_sfx(apu::Sfx::Lock);
         }
+        
     }
+}
+
+const ROW: u8 = 0x20;
+
+fn map_pos_to_tile_index(x: u8, y: u8) -> u16 {
+    return (x as u16) / 8 + (y as u16 / 8) * ( ROW as u16)
+}
+fn map_pos_to_sprite_index(x: u8, y: u8) -> u16 {
+    return (x as u16) / 8 + (y as u16 / 8) * (ROW as u16) + 2 + (ROW as u16) * 2
 }
