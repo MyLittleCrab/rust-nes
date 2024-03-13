@@ -33,3 +33,7 @@ impl DerefMut for Addr {
         unsafe { &mut *self.as_ptr() }
     }
 }
+
+pub fn inc_u8(x: u8, dx: i8) -> u8 {
+    ((x as i8) + dx) as u8
+}
