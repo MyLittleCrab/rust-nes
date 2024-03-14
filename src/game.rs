@@ -7,6 +7,7 @@ use crate::{
 static mut STATE: Option<Game> = None;
 static mut SEED: u16 = 0x8988;
 
+const ROW: u8 = 0x20;
 const N_ROWS: u8 = 20;
 const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
 const PLAYER_WIDTH: u8 = 6;
@@ -16,6 +17,7 @@ const ORIGIN: u16 = 0x2020;
 const HEART: u8 = 0x63;
 const WALL_SPRITE: u8 = 0x60;
 const AT_SPRITE: u8 = 0x59;
+const COIN_SPRITE: u8 = HEART + 7;
 
 const WIDTH: u8 = 224;
 const HEIGHT: u8 = 208;
@@ -36,7 +38,8 @@ fn state() -> &'static mut Game {
 #[derive(Copy, Clone)]
 enum Tile {
     Nothing,
-    Wall
+    Wall,
+    Coin,
 }
 
 
@@ -59,7 +62,8 @@ pub fn init() {
         //ppu::write_addr(origin + row * i);
         match tile {
             Tile::Nothing => ppu::write_data(0x00),
-            Tile::Wall => ppu::write_data(0x60)
+            Tile::Wall => ppu::write_data(WALL_SPRITE),
+            Tile::Coin => ppu::write_data(COIN_SPRITE)
         }
     }
     
@@ -98,6 +102,13 @@ fn get_tile_at<const N: usize>(tiles: &[Tile ; N], x: u8, y: u8) -> Tile {
 
 pub fn render() {
     let game = state();
+
+    if let MyOption::Some(index) = game.grabbed_coin_index {
+        ppu::write_addr(ORIGIN + index);
+        ppu::write_data(HEART);
+        game.grabbed_coin_index = MyOption::None(0);
+    }
+
     //ppu::draw_ascii(0x20a3, "HEART-MEN");
     // place tile at heart pos
     //let index = map_pos_to_tile_index(game.paddle.x, game.paddle.y);
@@ -155,11 +166,17 @@ struct Paddle {
     width: u8,
 }
 
+enum MyOption {
+    Some(u16),
+    None(u16)
+}
+
 
 
 struct Game {
     paddle: Paddle,
-    walls: [Tile ; GRID_SIZE as usize]
+    walls: [Tile ; GRID_SIZE as usize],
+    grabbed_coin_index: MyOption,
 }
 
 
@@ -171,6 +188,9 @@ impl Game {
             cycle_rng();
                 if get_rng() % 4 == 0 {
                     walls[i as usize] = Tile::Wall;
+                }
+                else if get_rng() % 41 == 1 {
+                    walls[i as usize] = Tile::Coin;
                 }
         }
         for i in 0 .. ROW {
@@ -186,7 +206,8 @@ impl Game {
                 y: HEIGHT - 10,
                 width: 1,
             },
-            walls
+            walls,
+            grabbed_coin_index: MyOption::None(0),
         };
 
         game
@@ -218,7 +239,13 @@ impl Game {
                 delta_y = 0;
                 apu.play_sfx(Sfx::Lock);
             }
-        }    
+        }
+        if let Tile::Coin = get_tile_at(&self.walls, self.paddle.x + 4, self.paddle.y + 4) {
+            let index = map_pos_to_tile_index(self.paddle.x + 4, self.paddle.y + 4);
+            self.walls[index as usize] = Tile::Nothing;
+            self.grabbed_coin_index = MyOption::Some(index);
+            apu.play_sfx(Sfx::LevelUp);
+        }
 
         self.paddle.x = inc_u8(self.paddle.x, delta_x);
         self.paddle.y = inc_u8(self.paddle.y, delta_y);
@@ -227,8 +254,9 @@ impl Game {
     }
 }
 
-const ROW: u8 = 0x20;
 
+
+#[inline(never)]
 fn map_pos_to_tile_index(x: u8, y: u8) -> u16 {
     let x_shift = x - 0;
     let y_shift = y - 0;
@@ -236,6 +264,8 @@ fn map_pos_to_tile_index(x: u8, y: u8) -> u16 {
     let y_tile = y_shift / 8 + 1;
     return (x_tile as u16) + (y_tile as u16) * ( ROW as u16)
 }
+
+#[inline(never)]
 fn map_pos_to_sprite_index(x: u8, y: u8) -> u16 {
     return (x as u16) / 8 + (y as u16 / 8) * (ROW as u16) + 2 + (ROW as u16) * 2
 }
