@@ -63,5 +63,4 @@ pub fn digit_to_ascii(b: u8) -> u8 {
         65 - 2 + b - 10 + 2
         //0x60
     }
-    
 }

@@ -1,6 +1,8 @@
 use crate::{
-    apu::{self, Sfx}, io, ppu,
-    sprites::{self, SpriteState}, utils::inc_u8,
+    apu::{self, Sfx},
+    io, ppu,
+    sprites::{self, SpriteState},
+    utils::inc_u8,
 };
 
 // statically allocated memory
@@ -42,8 +44,6 @@ enum Tile {
     Coin,
 }
 
-
-
 pub fn init() {
     unsafe {
         STATE = Some(Game::new());
@@ -63,15 +63,13 @@ pub fn init() {
         match tile {
             Tile::Nothing => ppu::write_data(0x00),
             Tile::Wall => ppu::write_data(WALL_SPRITE),
-            Tile::Coin => ppu::write_data(COIN_SPRITE)
+            Tile::Coin => ppu::write_data(COIN_SPRITE),
         }
     }
-    
+
     // text
     ppu::draw_ascii(ORIGIN + 0x06, "HEART-MAN");
 }
-
-
 
 pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     let game = state();
@@ -91,14 +89,14 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     );
 }
 
-fn get_tile_at<const N: usize>(tiles: &[Tile ; N], x: u8, y: u8) -> Tile {
+fn get_tile_at<const N: usize>(tiles: &[Tile; N], x: u8, y: u8) -> Tile {
     let index = map_pos_to_tile_index(x, y);
     if index < tiles.len() as u16 {
         tiles[index as usize]
     } else {
         Tile::Nothing
     }
-} 
+}
 
 pub fn render() {
     let game = state();
@@ -112,7 +110,7 @@ pub fn render() {
     //ppu::draw_ascii(0x20a3, "HEART-MEN");
     // place tile at heart pos
     //let index = map_pos_to_tile_index(game.paddle.x, game.paddle.y);
-    
+
     // if index < game.walls.len() as u16 {
     //     match &game.walls[index as usize] {
     //         Tile::Wall => {
@@ -123,7 +121,7 @@ pub fn render() {
     //         _ => ()
     //     }
     // }
-    
+
     // let digits = io::u16_to_digits(index as u16);
     // ppu::write_addr(ORIGIN);
     // for x in digits {
@@ -152,8 +150,6 @@ fn get_rng() -> u8 {
     unsafe { (SEED >> 8) as u8 }
 }
 
-
-
 struct Ball {
     x: u8,
     y: u8,
@@ -168,35 +164,30 @@ struct Paddle {
 
 enum MyOption {
     Some(u16),
-    None(u16)
+    None(u16),
 }
-
-
 
 struct Game {
     paddle: Paddle,
-    walls: [Tile ; GRID_SIZE as usize],
+    walls: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: MyOption,
 }
 
-
-
 impl Game {
     fn new() -> Self {
-        let mut walls = [Tile::Nothing ; GRID_SIZE as usize];
-        for i in 0 .. GRID_SIZE {
+        let mut walls = [Tile::Nothing; GRID_SIZE as usize];
+        for i in 0..GRID_SIZE {
             cycle_rng();
-                if get_rng() % 4 == 0 {
-                    walls[i as usize] = Tile::Wall;
-                }
-                else if get_rng() % 41 == 1 {
-                    walls[i as usize] = Tile::Coin;
-                }
+            if get_rng() % 4 == 0 {
+                walls[i as usize] = Tile::Wall;
+            } else if get_rng() % 41 == 1 {
+                walls[i as usize] = Tile::Coin;
+            }
         }
-        for i in 0 .. ROW {
+        for i in 0..ROW {
             walls[i as usize] = Tile::Wall;
         }
-        for i in 0 .. (N_ROWS as u16) {
+        for i in 0..(N_ROWS as u16) {
             walls[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
             walls[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
         }
@@ -218,7 +209,7 @@ impl Game {
 
         let mut delta_x: i8 = 0;
         let mut delta_y: i8 = 0;
-        //if self.paddle.x 
+        //if self.paddle.x
 
         if buttons & io::LEFT != 0 && self.paddle.x > 0 {
             delta_x = -2;
@@ -230,12 +221,25 @@ impl Game {
         } else if buttons & io::DOWN != 0 && self.paddle.y + 8 < 0xe8 {
             delta_y = 2;
         }
-        for (dx, dy) in [(0, 0), (0, PLAYER_WIDTH), (PLAYER_WIDTH, 0), (PLAYER_WIDTH, PLAYER_WIDTH)] {
-            if let Tile::Wall = get_tile_at(&self.walls, inc_u8(self.paddle.x + dx, delta_x), self.paddle.y + dy) {
+        for (dx, dy) in [
+            (0, 0),
+            (0, PLAYER_WIDTH),
+            (PLAYER_WIDTH, 0),
+            (PLAYER_WIDTH, PLAYER_WIDTH),
+        ] {
+            if let Tile::Wall = get_tile_at(
+                &self.walls,
+                inc_u8(self.paddle.x + dx, delta_x),
+                self.paddle.y + dy,
+            ) {
                 delta_x = 0;
                 apu.play_sfx(Sfx::Lock);
             }
-            if let Tile::Wall = get_tile_at(&self.walls, self.paddle.x + dx, inc_u8(self.paddle.y + dy, delta_y)) {
+            if let Tile::Wall = get_tile_at(
+                &self.walls,
+                self.paddle.x + dx,
+                inc_u8(self.paddle.y + dy, delta_y),
+            ) {
                 delta_y = 0;
                 apu.play_sfx(Sfx::Lock);
             }
@@ -249,12 +253,8 @@ impl Game {
 
         self.paddle.x = inc_u8(self.paddle.x, delta_x);
         self.paddle.y = inc_u8(self.paddle.y, delta_y);
-        
-        
     }
 }
-
-
 
 #[inline(never)]
 fn map_pos_to_tile_index(x: u8, y: u8) -> u16 {
@@ -262,10 +262,10 @@ fn map_pos_to_tile_index(x: u8, y: u8) -> u16 {
     let y_shift = y - 0;
     let x_tile = x_shift / 8 + 2;
     let y_tile = y_shift / 8 + 1;
-    return (x_tile as u16) + (y_tile as u16) * ( ROW as u16)
+    return (x_tile as u16) + (y_tile as u16) * (ROW as u16);
 }
 
 #[inline(never)]
 fn map_pos_to_sprite_index(x: u8, y: u8) -> u16 {
-    return (x as u16) / 8 + (y as u16 / 8) * (ROW as u16) + 2 + (ROW as u16) * 2
+    return (x as u16) / 8 + (y as u16 / 8) * (ROW as u16) + 2 + (ROW as u16) * 2;
 }
