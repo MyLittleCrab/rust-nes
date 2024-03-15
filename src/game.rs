@@ -6,16 +6,16 @@ use crate::{
 };
 
 // statically allocated memory
-static mut STATE: MyOption<Game> = MyOption::None(
-    Game {
-        paddle: Paddle {
-            x: 0, y:0, width: 0,
-        },
-        tiles: [Tile::Nothing ; GRID_SIZE as usize],
-        grabbed_coin_index: MyOption::None(0),
-        n_coins: 0
-    }
-);
+static mut STATE: MyOption<Game> = MyOption::None(Game {
+    paddle: Paddle {
+        x: 0,
+        y: 0,
+        width: 0,
+    },
+    tiles: [Tile::Nothing; GRID_SIZE as usize],
+    grabbed_coin_index: MyOption::None(0),
+    n_coins: 0,
+});
 static mut SEED: u16 = 0x8988;
 
 const ROW: u8 = 0x20;
@@ -43,11 +43,12 @@ const TOP_MARGIN: u8 = 16;
 
 /// do not call this more than once in the same scope (!)
 fn state() -> &'static mut Game {
-    unsafe { match &mut STATE {
-        MyOption::Some(g) => g,
-        MyOption::None(_) => unimplemented!()
+    unsafe {
+        match &mut STATE {
+            MyOption::Some(g) => g,
+            MyOption::None(_) => unimplemented!(),
+        }
     }
-}
 }
 
 #[derive(Copy, Clone)]
@@ -61,7 +62,7 @@ pub fn init() {
     unsafe {
         let game = Game::new();
         //if we don't read the value here, game.n_coins = 0 ?????
-        debug_value(0x6820, game.n_coins); 
+        debug_value(0x6820, game.n_coins);
         STATE = MyOption::Some(game);
     }
     let game = state();
@@ -129,7 +130,7 @@ pub fn render() {
     //     ppu::write_data(io::digit_to_ascii(x) - 32);
     // }
     ppu::write_addr(ORIGIN);
-    
+
     let digits = io::byte_to_digits(game.n_coins);
     ppu::write_data(io::digit_to_ascii(digits[1]) - 32);
     ppu::write_data(io::digit_to_ascii(digits[0]) - 32);
@@ -177,31 +178,28 @@ pub struct Game {
     tiles: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: MyOption<u16>,
     n_coins: u8,
-
 }
 
 #[inline(never)]
-fn stuff(walls: &mut [Tile ; GRID_SIZE as usize]) -> u8 {
-    
-        let mut n_coins = 0;
-        for i in 0..GRID_SIZE {
-            cycle_rng();
-            if get_rng() % 4 == 0 {
-                walls[i as usize] = Tile::Wall;
-            } else if get_rng() % 41 == 1 {
-                walls[i as usize] = Tile::Coin;
-                n_coins += 1;
-            }
+fn stuff(walls: &mut [Tile; GRID_SIZE as usize]) -> u8 {
+    let mut n_coins = 0;
+    for i in 0..GRID_SIZE {
+        cycle_rng();
+        if get_rng() % 4 == 0 {
+            walls[i as usize] = Tile::Wall;
+        } else if get_rng() % 41 == 1 {
+            walls[i as usize] = Tile::Coin;
+            n_coins += 1;
         }
-        
-        return n_coins
-        
+    }
+
+    return n_coins;
 }
 
 fn debug_value(at: u16, value: u8) {
     Addr(at).write(0xaa);
-    Addr(at  +1).write(value);
-    Addr(at  +2).write(0xaa);
+    Addr(at + 1).write(value);
+    Addr(at + 2).write(0xaa);
     Addr(at + 3).write(0xab);
 }
 
@@ -274,7 +272,6 @@ impl Game {
                 if !apu.is_playing() {
                     apu.play_sfx(Sfx::Lock);
                 }
-                
             }
         }
         if let Tile::Coin = get_tile_at(&self.tiles, self.paddle.x + 4, self.paddle.y + 4) {
@@ -287,7 +284,6 @@ impl Game {
 
         self.paddle.x = inc_u8(self.paddle.x, delta_x);
         self.paddle.y = inc_u8(self.paddle.y, delta_y);
-
     }
 }
 

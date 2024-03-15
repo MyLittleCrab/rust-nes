@@ -136,7 +136,7 @@ impl APU {
             self.sfx = Sfx::None
         }
     }
-    
+
     pub(crate) fn is_playing(&self) -> bool {
         self.sfx != Sfx::None
     }
