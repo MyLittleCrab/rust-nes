@@ -61,11 +61,10 @@ pub fn init() {
     unsafe {
         let game = Game::new();
         //if we don't read the value here, game.n_coins = 0 ?????
-        debug_value(0x6850, game.n_coins); 
+        debug_value(0x6820, game.n_coins); 
         STATE = MyOption::Some(game);
     }
     let game = state();
-    debug_value(0x6830, game.n_coins);
 
     // palettes and border
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
@@ -83,8 +82,6 @@ pub fn init() {
             Tile::Coin => ppu::write_data(COIN_SPRITE),
         }
     }
-
-    debug_value(0x6840, game.n_coins);
 
     // text
     ppu::draw_ascii(ORIGIN + 0x06, "HEART-MAN");
@@ -196,7 +193,6 @@ fn stuff(walls: &mut [Tile ; GRID_SIZE as usize]) -> u8 {
                 n_coins += 1;
             }
         }
-        debug_value(0x6800, n_coins);
         
         return n_coins
         
@@ -231,6 +227,7 @@ impl Game {
             grabbed_coin_index: MyOption::None(0),
             n_coins,
         };
+        //if we don't read the value here, game.n_coins = 0 ?????
         debug_value(0x6810, game.n_coins);
         game
     }
@@ -291,7 +288,6 @@ impl Game {
         self.paddle.x = inc_u8(self.paddle.x, delta_x);
         self.paddle.y = inc_u8(self.paddle.y, delta_y);
 
-        debug_value(0x6820, self.n_coins);
     }
 }
 
