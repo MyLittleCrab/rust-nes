@@ -2,6 +2,7 @@
 #![feature(start)]
 #![allow(unused_imports, dead_code)]
 
+use game::Game;
 use sprites::SpriteState;
 
 mod apu;
