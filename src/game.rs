@@ -2,7 +2,7 @@ use crate::{
     apu::{self, Sfx},
     io, ppu,
     sprites::{self, SpriteState},
-    utils::{inc_u8, Addr},
+    utils::{debug_value, inc_u8, Addr},
 };
 
 // statically allocated memory
@@ -94,12 +94,6 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     let game = state();
     game.step(apu);
 
-    // sprites.add(
-    //     TOP_MARGIN + game.ball.x,
-    //     LEFT_MARGIN + game.ball.y - 1,
-    //     0x80,
-    //     0,
-    // );
     sprites.add(
         TOP_MARGIN + game.paddle.x,
         LEFT_MARGIN + game.paddle.y - 1,
@@ -182,33 +176,20 @@ pub struct Game {
     n_coins: u8,
 }
 
-#[inline(never)]
-fn stuff(walls: &mut [Tile; GRID_SIZE as usize]) -> u8 {
-    let mut n_coins = 0;
-    for i in 0..GRID_SIZE {
-        cycle_rng();
-        if get_rng() % 4 == 0 {
-            walls[i as usize] = Tile::Wall;
-        } else if get_rng() % 41 == 1 {
-            walls[i as usize] = Tile::Coin;
-            n_coins += 1;
-        }
-    }
-
-    return n_coins;
-}
-
-fn debug_value(at: u16, value: u8) {
-    Addr(at).write(0xaa);
-    Addr(at + 1).write(value);
-    Addr(at + 2).write(0xaa);
-    Addr(at + 3).write(0xab);
-}
-
 impl Game {
     pub fn new() -> Self {
         let mut walls = [Tile::Nothing; GRID_SIZE as usize];
-        let n_coins = stuff(&mut walls);
+
+        let mut n_coins = 0;
+        for i in 0..GRID_SIZE {
+            cycle_rng();
+            if get_rng() % 4 == 0 {
+                walls[i as usize] = Tile::Wall;
+            } else if get_rng() % 41 == 1 {
+                walls[i as usize] = Tile::Coin;
+                n_coins += 1;
+            }
+        }
 
         for i in 0..ROW {
             walls[i as usize] = Tile::Wall;
