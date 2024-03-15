@@ -6,16 +6,17 @@ use crate::{
 };
 
 // statically allocated memory
-static mut STATE: MyOption<Game> = MyOption::None(Game {
-    paddle: Paddle {
-        x: 0,
-        y: 0,
-        width: 0,
-    },
-    tiles: [Tile::Nothing; GRID_SIZE as usize],
-    grabbed_coin_index: MyOption::None(0),
-    n_coins: 0,
-});
+static mut STATE: Option<Game> = None;
+// static mut STATE: MyOption<Game> = MyOption::None(Game {
+//     paddle: Paddle {
+//         x: 0,
+//         y: 0,
+//         width: 0,
+//     },
+//     tiles: [Tile::Nothing; GRID_SIZE as usize],
+//     grabbed_coin_index: MyOption::None(0),
+//     n_coins: 0,
+// });
 static mut SEED: u16 = 0x8988;
 
 const ROW: u8 = 0x20;
@@ -44,10 +45,11 @@ const TOP_MARGIN: u8 = 16;
 /// do not call this more than once in the same scope (!)
 fn state() -> &'static mut Game {
     unsafe {
-        match &mut STATE {
-            MyOption::Some(g) => g,
-            MyOption::None(_) => unimplemented!(),
-        }
+        STATE.as_mut().unwrap()
+        // match &mut STATE {
+        //     MyOption::Some(g) => g,
+        //     MyOption::None(_) => unimplemented!(),
+        // }
     }
 }
 
@@ -63,7 +65,7 @@ pub fn init() {
         let game = Game::new();
         //if we don't read the value here, game.n_coins = 0 ?????
         debug_value(0x6820, game.n_coins);
-        STATE = MyOption::Some(game);
+        STATE = Some(game);
     }
     let game = state();
 
