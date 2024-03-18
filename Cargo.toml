@@ -3,8 +3,17 @@ name = "brickgame"
 version = "0.2.0"
 edition = "2021"
 
+[profile.dev]
+opt-level = "s"
+lto = true
+debug = true
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+overflow-checks = false
+
 [profile.release]
-opt-level = 3
+opt-level = "s"
 lto = true
 debug = false
 debug-assertions = false

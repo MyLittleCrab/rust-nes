@@ -1,4 +1,5 @@
-const symbols = require('child_process').execSync('nm -anC "./target/mos-nes-cnrom/release/deps/brickgame-15dad2d27141c6ef.elf"').toString();
+const symbols = require('child_process').execSync('nm -anC ./target/mos-nes-cnrom/debug/deps/*.elf').toString();
+
 const lines = [];
 const usedAddr = {};
 symbols.toString().trim().split('\n').forEach(line => {

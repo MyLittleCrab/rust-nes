@@ -7,20 +7,11 @@ use crate::{
 
 // statically allocated memory
 static mut STATE: Option<Game> = None;
-// static mut STATE: MyOption<Game> = MyOption::None(Game {
-//     paddle: Paddle {
-//         x: 0,
-//         y: 0,
-//         width: 0,
-//     },
-//     tiles: [Tile::Nothing; GRID_SIZE as usize],
-//     grabbed_coin_index: MyOption::None(0),
-//     n_coins: 0,
-// });
+
 static mut SEED: u16 = 0x8988;
 
 const ROW: u8 = 0x20;
-const N_ROWS: u8 = 20;
+const N_ROWS: u8 = 15; // > 15 is too large to work with in RAM
 const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
 const PLAYER_WIDTH: u8 = 6;
 
@@ -44,13 +35,7 @@ const TOP_MARGIN: u8 = 16;
 
 /// do not call this more than once in the same scope (!)
 fn state() -> &'static mut Game {
-    unsafe {
-        STATE.as_mut().unwrap()
-        // match &mut STATE {
-        //     MyOption::Some(g) => g,
-        //     MyOption::None(_) => unimplemented!(),
-        // }
-    }
+    unsafe { STATE.as_mut().unwrap() }
 }
 
 #[derive(Copy, Clone)]
@@ -62,23 +47,19 @@ enum Tile {
 
 pub fn init() {
     unsafe {
-        let game = Game::new();
-        //if we don't read the value here, game.n_coins = 0 ?????
-        debug_value(0x6820, game.n_coins);
-        STATE = Some(game);
+        STATE = Some(Game::new());
     }
     let game = state();
 
-    // palettes and border
+    // palettes
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
     ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);
-    //ppu::draw_box(1, 1, 30, 28);
 
+    // draw tiles
     ppu::write_addr(ORIGIN);
 
     for (i, tile) in game.tiles.iter().enumerate() {
         ppu::write_addr(ORIGIN + (i as u16));
-        //ppu::write_addr(origin + row * i);
         match tile {
             Tile::Nothing => ppu::write_data(0x00),
             Tile::Wall => ppu::write_data(WALL_SPRITE),
@@ -95,8 +76,8 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     game.step(apu);
 
     sprites.add(
-        TOP_MARGIN + game.paddle.x,
-        LEFT_MARGIN + game.paddle.y - 1,
+        TOP_MARGIN + game.player.x,
+        LEFT_MARGIN + game.player.y - 1,
         HEART,
         0,
     );
@@ -114,10 +95,10 @@ fn get_tile_at<const N: usize>(tiles: &[Tile; N], x: u8, y: u8) -> Tile {
 pub fn render() {
     let game = state();
 
-    if let MyOption::Some(index) = game.grabbed_coin_index {
+    if let Some(index) = game.grabbed_coin_index {
         ppu::write_addr(ORIGIN + index);
         ppu::write_data(HEART);
-        game.grabbed_coin_index = MyOption::None(0);
+        game.grabbed_coin_index = None;
     }
 
     // let digits = io::u16_to_digits(index as u16);
@@ -151,65 +132,59 @@ fn cycle_rng() {
     }
 }
 
-#[inline(never)]
 fn get_rng() -> u8 {
     unsafe { (SEED >> 8) as u8 }
 }
 
-struct Paddle {
+struct Player {
     x: u8,
     y: u8,
-    width: u8,
-}
-
-// we seem to have a problem whenever one variant has a different size than the other.
-// so this is a substitute for the option type
-enum MyOption<T> {
-    Some(T),
-    None(T),
 }
 
 pub struct Game {
-    paddle: Paddle,
+    player: Player,
     tiles: [Tile; GRID_SIZE as usize],
-    grabbed_coin_index: MyOption<u16>,
+    grabbed_coin_index: Option<u16>,
     n_coins: u8,
 }
 
 impl Game {
     pub fn new() -> Self {
-        let mut walls = [Tile::Nothing; GRID_SIZE as usize];
+        let mut game = Self {
+            player: Player {
+                x: WIDTH / 2,
+                y: HEIGHT - 10,
+            },
+            tiles: [Tile::Nothing; GRID_SIZE as usize],
+            grabbed_coin_index: None,
+            n_coins: 0,
+        };
 
-        let mut n_coins = 0;
         for i in 0..GRID_SIZE {
             cycle_rng();
             if get_rng() % 4 == 0 {
-                walls[i as usize] = Tile::Wall;
+                game.tiles[i as usize] = Tile::Wall;
             } else if get_rng() % 41 == 1 {
-                walls[i as usize] = Tile::Coin;
-                n_coins += 1;
+                game.tiles[i as usize] = Tile::Coin;
             }
         }
 
         for i in 0..ROW {
-            walls[i as usize] = Tile::Wall;
+            game.tiles[i as usize] = Tile::Wall;
         }
         for i in 0..(N_ROWS as u16) {
-            walls[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
-            walls[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
+            game.tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
+            game.tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
         }
-        let game = Self {
-            paddle: Paddle {
-                x: WIDTH / 2,
-                y: HEIGHT - 10,
-                width: 1,
-            },
-            tiles: walls,
-            grabbed_coin_index: MyOption::None(0),
-            n_coins,
-        };
-        //if we don't read the value here, game.n_coins = 0 ?????
-        debug_value(0x6810, game.n_coins);
+        game.n_coins = game
+            .tiles
+            .iter()
+            .map(|t| match t {
+                Tile::Coin => 1,
+                _ => 0,
+            })
+            .sum();
+
         game
     }
 
@@ -220,14 +195,14 @@ impl Game {
         let mut delta_y: i8 = 0;
         //if self.paddle.x
 
-        if buttons & io::LEFT != 0 && self.paddle.x > 0 {
+        if buttons & io::LEFT != 0 && self.player.x > 0 {
             delta_x = -2;
-        } else if buttons & io::RIGHT != 0 && self.paddle.x + 8 < 0xe8 {
+        } else if buttons & io::RIGHT != 0 && self.player.x + 8 < 0xe8 {
             delta_x = 2;
         }
-        if buttons & io::UP != 0 && self.paddle.y > 0 {
+        if buttons & io::UP != 0 && self.player.y > 0 {
             delta_y = -2;
-        } else if buttons & io::DOWN != 0 && self.paddle.y + 8 < 0xe8 {
+        } else if buttons & io::DOWN != 0 && self.player.y + 8 < 0xe8 {
             delta_y = 2;
         }
         for (dx, dy) in [
@@ -238,8 +213,8 @@ impl Game {
         ] {
             if let Tile::Wall = get_tile_at(
                 &self.tiles,
-                inc_u8(self.paddle.x + dx, delta_x),
-                self.paddle.y + dy,
+                inc_u8(self.player.x + dx, delta_x),
+                self.player.y + dy,
             ) {
                 delta_x = 0;
                 if !apu.is_playing() {
@@ -248,8 +223,8 @@ impl Game {
             }
             if let Tile::Wall = get_tile_at(
                 &self.tiles,
-                self.paddle.x + dx,
-                inc_u8(self.paddle.y + dy, delta_y),
+                self.player.x + dx,
+                inc_u8(self.player.y + dy, delta_y),
             ) {
                 delta_y = 0;
                 if !apu.is_playing() {
@@ -257,16 +232,16 @@ impl Game {
                 }
             }
         }
-        if let Tile::Coin = get_tile_at(&self.tiles, self.paddle.x + 4, self.paddle.y + 4) {
-            let index = map_pos_to_tile_index(self.paddle.x + 4, self.paddle.y + 4);
+        if let Tile::Coin = get_tile_at(&self.tiles, self.player.x + 4, self.player.y + 4) {
+            let index = map_pos_to_tile_index(self.player.x + 4, self.player.y + 4);
             self.tiles[index as usize] = Tile::Nothing;
-            self.grabbed_coin_index = MyOption::Some(index);
+            self.grabbed_coin_index = Some(index);
             self.n_coins -= 1;
             apu.play_sfx(Sfx::LevelUp);
         }
 
-        self.paddle.x = inc_u8(self.paddle.x, delta_x);
-        self.paddle.y = inc_u8(self.paddle.y, delta_y);
+        self.player.x = inc_u8(self.player.x, delta_x);
+        self.player.y = inc_u8(self.player.y, delta_y);
     }
 }
 
