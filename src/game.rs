@@ -1,3 +1,5 @@
+use core::ptr::addr_of_mut;
+
 use crate::{
     apu::{self, Sfx},
     io, ppu,
@@ -11,7 +13,7 @@ static mut STATE: Option<Game> = None;
 static mut SEED: u16 = 0x8988;
 
 const ROW: u8 = 0x20;
-const N_ROWS: u8 = 15; // > 15 is too large to work with in RAM
+const N_ROWS: u8 = 24;
 const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
 const PLAYER_WIDTH: u8 = 6;
 
@@ -47,7 +49,7 @@ enum Tile {
 
 pub fn init() {
     unsafe {
-        STATE = Some(Game::new());
+        Game::new(&mut *addr_of_mut!(STATE));
     }
     let game = state();
 
@@ -149,8 +151,8 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Self {
-        let mut game = Self {
+    pub fn new(some_game: &mut Option<Game>) {
+        *some_game = Some(Self {
             player: Player {
                 x: WIDTH / 2,
                 y: HEIGHT - 10,
@@ -158,7 +160,8 @@ impl Game {
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
             n_coins: 0,
-        };
+        });
+        let game = some_game.as_mut().unwrap();
 
         for i in 0..GRID_SIZE {
             cycle_rng();
@@ -184,8 +187,6 @@ impl Game {
                 _ => 0,
             })
             .sum();
-
-        game
     }
 
     fn step(&mut self, apu: &mut apu::APU) {

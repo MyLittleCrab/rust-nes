@@ -18,6 +18,11 @@ impl Addr {
     pub fn addr(self) -> u16 {
         self.0
     }
+    pub fn write16(self, value: u16) {
+        let bytes = value.to_le_bytes();
+        self.write(bytes[0]);
+        self.offset(1).write(bytes[1]);
+    }
 }
 
 impl Deref for Addr {
