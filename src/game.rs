@@ -3,14 +3,13 @@ use core::ptr::addr_of_mut;
 use crate::{
     apu::{self, Sfx},
     io, ppu,
+    rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
     utils::{debug_value, inc_u8, Addr},
 };
 
 // statically allocated memory
 static mut STATE: Option<Game> = None;
-
-static mut SEED: u16 = 0x8988;
 
 const ROW: u8 = 0x20;
 const N_ROWS: u8 = 24;
@@ -125,17 +124,23 @@ pub fn render() {
     // }
 }
 
-// game logic
-#[inline(never)]
-fn cycle_rng() {
-    unsafe {
-        let new_bit = ((SEED >> 9) ^ (SEED >> 1)) & 1;
-        SEED = (new_bit << 15) | (SEED >> 1);
+fn make_level<const N: usize>(tiles: &mut [Tile; N]) {
+    for t in tiles.iter_mut() {
+        cycle_rng();
+        if get_rng() % 4 == 0 {
+            *t = Tile::Wall;
+        } else if get_rng() % 41 == 1 {
+            *t = Tile::Coin;
+        }
     }
-}
 
-fn get_rng() -> u8 {
-    unsafe { (SEED >> 8) as u8 }
+    for i in 0..ROW {
+        tiles[i as usize] = Tile::Wall;
+    }
+    for i in 0..(N_ROWS as u16) {
+        tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
+        tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
+    }
 }
 
 struct Player {
@@ -162,23 +167,8 @@ impl Game {
             n_coins: 0,
         });
         let game = some_game.as_mut().unwrap();
-
-        for i in 0..GRID_SIZE {
-            cycle_rng();
-            if get_rng() % 4 == 0 {
-                game.tiles[i as usize] = Tile::Wall;
-            } else if get_rng() % 41 == 1 {
-                game.tiles[i as usize] = Tile::Coin;
-            }
-        }
-
-        for i in 0..ROW {
-            game.tiles[i as usize] = Tile::Wall;
-        }
-        for i in 0..(N_ROWS as u16) {
-            game.tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
-            game.tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
-        }
+        make_level(&mut game.tiles);
+        
         game.n_coins = game
             .tiles
             .iter()

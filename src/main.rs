@@ -10,6 +10,7 @@ mod game;
 //mod breakout;
 mod io;
 mod ppu;
+mod rng;
 mod sprites;
 mod utils;
 
