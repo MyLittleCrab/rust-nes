@@ -5,7 +5,7 @@ use crate::{
     utils::Pos,
 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Tile {
     Nothing,
     Wall,
@@ -55,7 +55,7 @@ pub fn draw_level<const N: usize>(tiles: &mut [Tile; N]) {
     }
 }
 
-pub fn get_tile_at<const N: usize>(tiles: &[Tile; N], pos: &Pos) -> Tile {
+pub fn get_tile_at(tiles: &[Tile], pos: &Pos) -> Tile {
     let index = map_pos_to_tile_index(pos);
     if index < tiles.len() as u16 {
         tiles[index as usize]

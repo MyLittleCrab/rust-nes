@@ -8,7 +8,7 @@ use crate::{
     ppu,
     rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
-    utils::{debug_value, inc_u8, Addr, DPos, Pos},
+    utils::{debug_value, inc_u8, Addr, DPos, Pos, Vec2},
 };
 
 // statically allocated memory
@@ -77,6 +77,13 @@ struct Player {
     pos: Pos,
 }
 
+enum Sign {
+    Plus,
+    Minus,
+}
+
+type Collision = Vec2<Option<Sign>>;
+
 pub struct Game {
     player: Player,
     tiles: [Tile; GRID_SIZE as usize],
@@ -113,24 +120,23 @@ impl Game {
     fn step(&mut self, apu: &mut apu::APU) {
         let mut player_delta = player_movement_delta(io::controller_buttons(), &self.player.pos);
 
-        for box_delta in [
-            DPos::new(0, 0),
-            DPos::new(0, PLAYER_WIDTH as i8),
-            DPos::new(PLAYER_WIDTH as i8, 0),
-            DPos::new(PLAYER_WIDTH as i8, PLAYER_WIDTH as i8),
-        ] {
-            let box_pos = self.player.pos.shifted(&box_delta);
-            if let Tile::Wall = get_tile_at(&self.tiles, &box_pos.shifted(&player_delta.x_vec())) {
-                player_delta.x = 0;
-                if !apu.is_playing() {
-                    apu.play_sfx(Sfx::Lock);
-                }
+        let collision = check_box_collision(
+            &self.tiles,
+            Tile::Wall,
+            PLAYER_WIDTH as i8,
+            &self.player.pos,
+            &player_delta,
+        );
+        if let Some(_) = collision.x {
+            player_delta.x = 0;
+            if !apu.is_playing() {
+                apu.play_sfx(Sfx::Lock);
             }
-            if let Tile::Wall = get_tile_at(&self.tiles, &box_pos.shifted(&player_delta.y_vec())) {
-                player_delta.y = 0;
-                if !apu.is_playing() {
-                    apu.play_sfx(Sfx::Lock);
-                }
+        }
+        if let Some(_) = collision.y {
+            player_delta.y = 0;
+            if !apu.is_playing() {
+                apu.play_sfx(Sfx::Lock);
             }
         }
 
@@ -164,4 +170,39 @@ fn player_movement_delta(buttons: u8, player_pos: &Pos) -> DPos {
     }
 
     delta
+}
+
+fn i8_to_sign(i: i8) -> Option<Sign> {
+    if i > 0 {
+        Some(Sign::Plus)
+    } else if i < 0 {
+        Some(Sign::Minus)
+    } else {
+        None
+    }
+}
+
+fn check_box_collision(
+    tiles: &[Tile],
+    colliding_tile: Tile,
+    width: i8,
+    pos: &Pos,
+    pos_delta: &DPos,
+) -> Collision {
+    let mut collision = Collision { x: None, y: None };
+    for box_delta in [
+        DPos::new(0, 0),
+        DPos::new(0, width),
+        DPos::new(width, 0),
+        DPos::new(width, width),
+    ] {
+        let box_pos = pos.shifted(&box_delta);
+        if get_tile_at(tiles, &box_pos.shifted(&pos_delta.x_vec())) == colliding_tile {
+            collision.x = i8_to_sign(pos_delta.x);
+        }
+        if get_tile_at(tiles, &box_pos.shifted(&pos_delta.y_vec())) == colliding_tile {
+            collision.y = i8_to_sign(pos_delta.y);
+        }
+    }
+    collision
 }
