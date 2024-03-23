@@ -2,7 +2,10 @@ use core::{mem::transmute, ptr::addr_of_mut};
 
 use crate::{
     apu::{self, Sfx},
-    io, ppu,
+    constants::{GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_WIDTH, ROW, WIDTH},
+    io,
+    level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
+    ppu,
     rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
     utils::{debug_value, inc_u8, Addr, DPos, Pos},
@@ -11,37 +14,9 @@ use crate::{
 // statically allocated memory
 static mut STATE: Option<Game> = None;
 
-const ROW: u8 = 0x20;
-const N_ROWS: u8 = 29; // 29 fills screen
-const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
-const PLAYER_WIDTH: u8 = 6;
-
-const ORIGIN: u16 = 0x2020;
-
-const HEART: u8 = 0x63;
-const WALL_SPRITE: u8 = 0x60;
-const AT_SPRITE: u8 = 0x59;
-const COIN_SPRITE: u8 = HEART + 7;
-
-const WIDTH: u8 = 224;
-const HEIGHT: u8 = 208;
-const BRICKS_WIDE: usize = 14;
-const BRICK_WIDTH: u8 = 16;
-const BRICK_HEIGHT: u8 = 8;
-const TOP_BRICK_MARGIN: usize = 2;
-const BALL_DIAMETER: u8 = 6;
-const BALL_RADIUS: u8 = BALL_DIAMETER / 2;
-
 /// do not call this more than once in the same scope (!)
 fn state() -> &'static mut Game {
     unsafe { STATE.as_mut().unwrap() }
-}
-
-#[derive(Copy, Clone)]
-enum Tile {
-    Nothing,
-    Wall,
-    Coin,
 }
 
 pub fn init() {
@@ -54,17 +29,7 @@ pub fn init() {
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
     ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);
 
-    // draw tiles
-    ppu::write_addr(ORIGIN);
-
-    for (i, tile) in game.tiles.iter().enumerate() {
-        ppu::write_addr(ORIGIN + (i as u16));
-        match tile {
-            Tile::Nothing => ppu::write_data(0x00),
-            Tile::Wall => ppu::write_data(WALL_SPRITE),
-            Tile::Coin => ppu::write_data(COIN_SPRITE),
-        }
-    }
+    draw_level(&mut game.tiles);
 
     // text
     ppu::draw_ascii(ORIGIN + 0x06, "HEART-MAN");
@@ -74,16 +39,7 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     let game = state();
     game.step(apu);
 
-    sprites.add(&game.player.pos, HEART, 0);
-}
-
-fn get_tile_at<const N: usize>(tiles: &[Tile; N], x: u8, y: u8) -> Tile {
-    let index = map_pos_to_tile_index(x, y);
-    if index < tiles.len() as u16 {
-        tiles[index as usize]
-    } else {
-        Tile::Nothing
-    }
+    sprites.add(&game.player.pos, HEART_SPRITE, 0);
 }
 
 pub fn render() {
@@ -91,7 +47,7 @@ pub fn render() {
 
     if let Some(index) = game.grabbed_coin_index {
         ppu::write_addr(ORIGIN + index);
-        ppu::write_data(HEART);
+        ppu::write_data(HEART_SPRITE);
         game.grabbed_coin_index = None;
     }
 
@@ -116,35 +72,6 @@ pub fn render() {
     //     ppu::write_data(io::digit_to_ascii(x) - 32);
     // }
 }
-
-fn make_level<const N: usize>(tiles: &mut [Tile; N]) {
-    for t in tiles.iter_mut() {
-        cycle_rng();
-        if get_rng() % 4 == 0 {
-            *t = Tile::Wall;
-        } else if get_rng() % 41 == 1 {
-            *t = Tile::Coin;
-        }
-    }
-
-    for i in 0..ROW {
-        tiles[i as usize] = Tile::Wall;
-    }
-    for i in 0..(N_ROWS as u16) {
-        tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
-        tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
-    }
-    for i in 0..ROW {
-        tiles[(ROW as usize) * (N_ROWS as usize - 2) + i as usize] = Tile::Wall;
-    }
-    // for (t, target) in tiles.iter_mut().zip(TEST) {
-    //     *t = *target;
-    // }
-}
-
-// const TEST: &[Tile] = unsafe{
-//     transmute::<&[u8], &[Tile]>(include_bytes!("test_level.dat"))
-// };
 
 struct Player {
     pos: Pos,
@@ -184,70 +111,57 @@ impl Game {
     }
 
     fn step(&mut self, apu: &mut apu::APU) {
-        let buttons = io::controller_buttons();
+        let mut player_delta = player_movement_delta(io::controller_buttons(), &self.player.pos);
 
-        let mut delta = DPos::zero();
-        //if self.paddle.x
-
-        if buttons & io::LEFT != 0 && self.player.pos.x > 0 {
-            delta.x = -2;
-        } else if buttons & io::RIGHT != 0 && self.player.pos.x + 8 < 0xe8 {
-            delta.x = 2;
-        }
-        if buttons & io::UP != 0 && self.player.pos.y > 0 {
-            delta.y = -2;
-        } else if buttons & io::DOWN != 0 && self.player.pos.y + 8 < 0xe8 {
-            delta.y = 2;
-        }
-        for (dx, dy) in [
-            (0, 0),
-            (0, PLAYER_WIDTH),
-            (PLAYER_WIDTH, 0),
-            (PLAYER_WIDTH, PLAYER_WIDTH),
+        for box_delta in [
+            DPos::new(0, 0),
+            DPos::new(0, PLAYER_WIDTH as i8),
+            DPos::new(PLAYER_WIDTH as i8, 0),
+            DPos::new(PLAYER_WIDTH as i8, PLAYER_WIDTH as i8),
         ] {
-            if let Tile::Wall = get_tile_at(
-                &self.tiles,
-                inc_u8(self.player.pos.x + dx, delta.x),
-                self.player.pos.y + dy,
-            ) {
-                delta.x = 0;
+            let box_pos = self.player.pos.shifted(&box_delta);
+            if let Tile::Wall = get_tile_at(&self.tiles, &box_pos.shifted(&player_delta.x_vec())) {
+                player_delta.x = 0;
                 if !apu.is_playing() {
                     apu.play_sfx(Sfx::Lock);
                 }
             }
-            if let Tile::Wall = get_tile_at(
-                &self.tiles,
-                self.player.pos.x + dx,
-                inc_u8(self.player.pos.y + dy, delta.y),
-            ) {
-                delta.y = 0;
+            if let Tile::Wall = get_tile_at(&self.tiles, &box_pos.shifted(&player_delta.y_vec())) {
+                player_delta.y = 0;
                 if !apu.is_playing() {
                     apu.play_sfx(Sfx::Lock);
                 }
             }
         }
-        if let Tile::Coin = get_tile_at(&self.tiles, self.player.pos.x + 4, self.player.pos.y + 4) {
-            let index = map_pos_to_tile_index(self.player.pos.x + 4, self.player.pos.y + 4);
+
+        let player_center = self.player.pos.shifted(&DPos::new(4, 4));
+        if let Tile::Coin = get_tile_at(&self.tiles, &player_center) {
+            let index = map_pos_to_tile_index(&player_center);
             self.tiles[index as usize] = Tile::Nothing;
             self.grabbed_coin_index = Some(index);
             self.n_coins -= 1;
             apu.play_sfx(Sfx::LevelUp);
         }
 
-        self.player.pos.inc(&delta);
+        self.player.pos.inc(&player_delta);
     }
 }
 
-#[inline(never)]
-fn map_pos_to_tile_index(x: u8, y: u8) -> u16 {
-    let x_shift = x - 0;
-    let y_shift = y - 0;
-    let x_tile = x_shift / 8 + 2;
-    let y_tile = y_shift / 8 + 1;
-    return (x_tile as u16) + (y_tile as u16) * (ROW as u16);
-}
+fn player_movement_delta(buttons: u8, player_pos: &Pos) -> DPos {
+    let mut delta = DPos::zero();
 
-#[inline(never)]
-fn map_pos_to_sprite_index(x: u8, y: u8) -> u16 {
-    return (x as u16) / 8 + (y as u16 / 8) * (ROW as u16) + 2 + (ROW as u16) * 2;
+    if buttons & io::LEFT != 0 && player_pos.x > 0 {
+        delta.x = -2;
+    }
+    if buttons & io::RIGHT != 0 && player_pos.x + 8 < WIDTH {
+        delta.x = 2;
+    }
+    if buttons & io::UP != 0 && player_pos.y > 0 {
+        delta.y = -2;
+    }
+    if buttons & io::DOWN != 0 && player_pos.y + 8 < WIDTH {
+        delta.y = 2;
+    }
+
+    delta
 }
