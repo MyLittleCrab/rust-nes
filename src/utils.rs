@@ -49,3 +49,23 @@ pub fn debug_value(at: u16, value: u8) {
     Addr(at + 2).write(0xaa);
     Addr(at + 3).write(0xab);
 }
+
+#[derive(Copy, Clone)]
+pub struct Vec2<T> {
+    pub x: T,
+    pub y: T,
+}
+
+pub type Pos = Vec2<u8>;
+impl Pos {
+    pub fn inc(&mut self, delta: &DPos) {
+        self.x = inc_u8(self.x, delta.x);
+        self.y = inc_u8(self.y, delta.y);
+    }
+}
+pub type DPos = Vec2<i8>;
+impl DPos {
+    pub fn zero() -> Self {
+        Self { x: 0, y: 0 }
+    }
+}

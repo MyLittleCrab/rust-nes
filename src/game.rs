@@ -1,18 +1,18 @@
-use core::ptr::addr_of_mut;
+use core::{mem::transmute, ptr::addr_of_mut};
 
 use crate::{
     apu::{self, Sfx},
     io, ppu,
     rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
-    utils::{debug_value, inc_u8, Addr},
+    utils::{debug_value, inc_u8, Addr, DPos, Pos},
 };
 
 // statically allocated memory
 static mut STATE: Option<Game> = None;
 
 const ROW: u8 = 0x20;
-const N_ROWS: u8 = 24;
+const N_ROWS: u8 = 29; // 29 fills screen
 const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
 const PLAYER_WIDTH: u8 = 6;
 
@@ -31,8 +31,6 @@ const BRICK_HEIGHT: u8 = 8;
 const TOP_BRICK_MARGIN: usize = 2;
 const BALL_DIAMETER: u8 = 6;
 const BALL_RADIUS: u8 = BALL_DIAMETER / 2;
-const LEFT_MARGIN: u8 = 16;
-const TOP_MARGIN: u8 = 16;
 
 /// do not call this more than once in the same scope (!)
 fn state() -> &'static mut Game {
@@ -76,12 +74,7 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     let game = state();
     game.step(apu);
 
-    sprites.add(
-        TOP_MARGIN + game.player.x,
-        LEFT_MARGIN + game.player.y - 1,
-        HEART,
-        0,
-    );
+    sprites.add(&game.player.pos, HEART, 0);
 }
 
 fn get_tile_at<const N: usize>(tiles: &[Tile; N], x: u8, y: u8) -> Tile {
@@ -141,11 +134,20 @@ fn make_level<const N: usize>(tiles: &mut [Tile; N]) {
         tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
         tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
     }
+    for i in 0..ROW {
+        tiles[(ROW as usize) * (N_ROWS as usize - 2) + i as usize] = Tile::Wall;
+    }
+    // for (t, target) in tiles.iter_mut().zip(TEST) {
+    //     *t = *target;
+    // }
 }
 
+// const TEST: &[Tile] = unsafe{
+//     transmute::<&[u8], &[Tile]>(include_bytes!("test_level.dat"))
+// };
+
 struct Player {
-    x: u8,
-    y: u8,
+    pos: Pos,
 }
 
 pub struct Game {
@@ -159,8 +161,10 @@ impl Game {
     pub fn new(some_game: &mut Option<Game>) {
         *some_game = Some(Self {
             player: Player {
-                x: WIDTH / 2,
-                y: HEIGHT - 10,
+                pos: Pos {
+                    x: WIDTH / 2,
+                    y: HEIGHT - 10,
+                },
             },
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
@@ -168,7 +172,7 @@ impl Game {
         });
         let game = some_game.as_mut().unwrap();
         make_level(&mut game.tiles);
-        
+
         game.n_coins = game
             .tiles
             .iter()
@@ -182,19 +186,18 @@ impl Game {
     fn step(&mut self, apu: &mut apu::APU) {
         let buttons = io::controller_buttons();
 
-        let mut delta_x: i8 = 0;
-        let mut delta_y: i8 = 0;
+        let mut delta = DPos::zero();
         //if self.paddle.x
 
-        if buttons & io::LEFT != 0 && self.player.x > 0 {
-            delta_x = -2;
-        } else if buttons & io::RIGHT != 0 && self.player.x + 8 < 0xe8 {
-            delta_x = 2;
+        if buttons & io::LEFT != 0 && self.player.pos.x > 0 {
+            delta.x = -2;
+        } else if buttons & io::RIGHT != 0 && self.player.pos.x + 8 < 0xe8 {
+            delta.x = 2;
         }
-        if buttons & io::UP != 0 && self.player.y > 0 {
-            delta_y = -2;
-        } else if buttons & io::DOWN != 0 && self.player.y + 8 < 0xe8 {
-            delta_y = 2;
+        if buttons & io::UP != 0 && self.player.pos.y > 0 {
+            delta.y = -2;
+        } else if buttons & io::DOWN != 0 && self.player.pos.y + 8 < 0xe8 {
+            delta.y = 2;
         }
         for (dx, dy) in [
             (0, 0),
@@ -204,35 +207,34 @@ impl Game {
         ] {
             if let Tile::Wall = get_tile_at(
                 &self.tiles,
-                inc_u8(self.player.x + dx, delta_x),
-                self.player.y + dy,
+                inc_u8(self.player.pos.x + dx, delta.x),
+                self.player.pos.y + dy,
             ) {
-                delta_x = 0;
+                delta.x = 0;
                 if !apu.is_playing() {
                     apu.play_sfx(Sfx::Lock);
                 }
             }
             if let Tile::Wall = get_tile_at(
                 &self.tiles,
-                self.player.x + dx,
-                inc_u8(self.player.y + dy, delta_y),
+                self.player.pos.x + dx,
+                inc_u8(self.player.pos.y + dy, delta.y),
             ) {
-                delta_y = 0;
+                delta.y = 0;
                 if !apu.is_playing() {
                     apu.play_sfx(Sfx::Lock);
                 }
             }
         }
-        if let Tile::Coin = get_tile_at(&self.tiles, self.player.x + 4, self.player.y + 4) {
-            let index = map_pos_to_tile_index(self.player.x + 4, self.player.y + 4);
+        if let Tile::Coin = get_tile_at(&self.tiles, self.player.pos.x + 4, self.player.pos.y + 4) {
+            let index = map_pos_to_tile_index(self.player.pos.x + 4, self.player.pos.y + 4);
             self.tiles[index as usize] = Tile::Nothing;
             self.grabbed_coin_index = Some(index);
             self.n_coins -= 1;
             apu.play_sfx(Sfx::LevelUp);
         }
 
-        self.player.x = inc_u8(self.player.x, delta_x);
-        self.player.y = inc_u8(self.player.y, delta_y);
+        self.player.pos.inc(&delta);
     }
 }
 

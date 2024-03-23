@@ -6,6 +6,7 @@ use game::Game;
 use sprites::SpriteState;
 
 mod apu;
+mod constants;
 mod game;
 //mod breakout;
 mod io;

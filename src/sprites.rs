@@ -1,9 +1,21 @@
+use crate::constants::{LEFT_MARGIN, TOP_MARGIN};
 use crate::ppu;
-use crate::utils::Addr;
+use crate::utils::{Addr, Pos};
 
 const ADDR: Addr = Addr(0x200);
 const OAM_DMA: Addr = Addr(0x4014);
 const OAM_ADDR: Addr = Addr(0x2003);
+
+struct SpritePos(Pos);
+
+impl SpritePos {
+    pub fn from_pos(pos: &Pos) -> SpritePos {
+        SpritePos(Pos {
+            x: TOP_MARGIN + pos.x,
+            y: LEFT_MARGIN + pos.y - 1,
+        })
+    }
+}
 
 pub struct SpriteState {
     index: isize,
@@ -20,12 +32,13 @@ impl SpriteState {
         }
         self.index = 0;
     }
-    pub fn add(&mut self, x: u8, y: u8, tile: u8, attr: u8) {
+    pub fn add(&mut self, pos: &Pos, tile: u8, attr: u8) {
+        let sprite_pos = SpritePos::from_pos(pos);
         // attr is palette + flags
-        *ADDR.offset(self.index) = y;
+        *ADDR.offset(self.index) = sprite_pos.0.y;
         *ADDR.offset(self.index + 1) = tile;
         *ADDR.offset(self.index + 2) = attr;
-        *ADDR.offset(self.index + 3) = x;
+        *ADDR.offset(self.index + 3) = sprite_pos.0.x;
         self.index += 4;
     }
 }
