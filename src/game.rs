@@ -125,15 +125,24 @@ impl Game {
                     orientation: Orientation::Widdershins,
                     n_turns: 0,
                 },
-                // Meanie {
-                //     pos: Pos {
-                //         x: WIDTH / 3,
-                //         y: HEIGHT - 20,
-                //     },
-                //     vel: DPos::new(0, 1),
-                //     orientation: Orientation::Widdershins,
-                //     n_turns: 0,
-                // },
+                Meanie {
+                    pos: Pos {
+                        x: WIDTH / 3,
+                        y: HEIGHT - 20,
+                    },
+                    vel: DPos::new(0, 1),
+                    orientation: Orientation::Widdershins,
+                    n_turns: 0,
+                },
+                Meanie {
+                    pos: Pos {
+                        x: WIDTH / 3,
+                        y: HEIGHT /2,
+                    },
+                    vel: DPos::new(0, -1),
+                    orientation: Orientation::Widdershins,
+                    n_turns: 0,
+                },
             ],
         });
         let game = some_game.as_mut().unwrap();
@@ -244,8 +253,8 @@ fn check_box_collision(
 }
 
 fn update_meanie(tiles: &[Tile], meanie: &mut Meanie) {
-    let mut delta;
-    loop {
+    let mut delta = DPos::zero();
+    for _ in 0..3 { // stop trying after 3 attempts in case we're stuck
         delta = meanie.vel.scaled(DT as i8);
         let collision =
             check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);
