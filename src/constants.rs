@@ -15,3 +15,6 @@ pub const HEIGHT: u8 = 208;
 pub const HEART_SPRITE: u8 = 0x63;
 pub const WALL_SPRITE: u8 = 0x60;
 pub const COIN_SPRITE: u8 = HEART_SPRITE + 7;
+pub const AT_SPRITE: u8 = HEART_SPRITE - 4;
+
+pub const DT: u8 = 1;

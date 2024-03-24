@@ -1,14 +1,17 @@
 use core::{mem::transmute, ptr::addr_of_mut};
 
+use alloc::vec;
+use alloc::vec::Vec;
+
 use crate::{
     apu::{self, Sfx},
-    constants::{GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_WIDTH, ROW, WIDTH},
+    constants::{AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_WIDTH, ROW, WIDTH},
     io,
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
     ppu,
     rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
-    utils::{debug_value, inc_u8, Addr, DPos, Pos, Vec2},
+    utils::{debug_value, inc_u8, Addr, DPos, Orientation, Pos, Sign, Vec2},
 };
 
 // statically allocated memory
@@ -40,6 +43,10 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     game.step(apu);
 
     sprites.add(&game.player.pos, HEART_SPRITE, 0);
+
+    for meanie in game.meanies.iter() {
+        sprites.add(&meanie.pos, AT_SPRITE, 0)
+    }
 }
 
 pub fn render() {
@@ -77,9 +84,13 @@ struct Player {
     pos: Pos,
 }
 
-enum Sign {
-    Plus,
-    Minus,
+//const N_MEANIES: usize = 1;
+
+struct Meanie {
+    pos: Pos,
+    vel: DPos,
+    orientation: Orientation,
+    n_turns: u8,
 }
 
 type Collision = Vec2<Option<Sign>>;
@@ -89,6 +100,7 @@ pub struct Game {
     tiles: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
+    meanies: Vec<Meanie>,
 }
 
 impl Game {
@@ -103,6 +115,26 @@ impl Game {
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
             n_coins: 0,
+            meanies: vec![
+                Meanie {
+                    pos: Pos {
+                        x: WIDTH / 2 + 16,
+                        y: HEIGHT - 20,
+                    },
+                    vel: DPos::new(-1, 0),
+                    orientation: Orientation::Widdershins,
+                    n_turns: 0,
+                },
+                // Meanie {
+                //     pos: Pos {
+                //         x: WIDTH / 3,
+                //         y: HEIGHT - 20,
+                //     },
+                //     vel: DPos::new(0, 1),
+                //     orientation: Orientation::Widdershins,
+                //     n_turns: 0,
+                // },
+            ],
         });
         let game = some_game.as_mut().unwrap();
         make_level(&mut game.tiles);
@@ -150,6 +182,10 @@ impl Game {
         }
 
         self.player.pos.inc(&player_delta);
+
+        for meanie in self.meanies.iter_mut() {
+            update_meanie(&self.tiles, meanie)
+        }
     }
 }
 
@@ -205,4 +241,26 @@ fn check_box_collision(
         }
     }
     collision
+}
+
+fn update_meanie(tiles: &[Tile], meanie: &mut Meanie) {
+    let mut delta;
+    loop {
+        delta = meanie.vel.scaled(DT as i8);
+        let collision =
+            check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);
+        if let Vec2 { x: None, y: None } = collision {
+            break;
+        }
+        delta = delta.rotate(meanie.orientation);
+        meanie.vel = delta;
+        meanie.n_turns += 1;
+    }
+
+    meanie.pos.inc(&delta);
+
+    if meanie.n_turns > 50 {
+        meanie.orientation = meanie.orientation.reverse();
+        meanie.n_turns = 0
+    }
 }

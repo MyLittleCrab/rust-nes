@@ -2,6 +2,9 @@
 #![feature(start)]
 #![allow(unused_imports, dead_code)]
 
+extern crate alloc;
+extern crate mos_alloc;
+
 use game::Game;
 use sprites::SpriteState;
 

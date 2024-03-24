@@ -51,6 +51,26 @@ pub fn debug_value(at: u16, value: u8) {
 }
 
 #[derive(Copy, Clone)]
+pub enum Orientation {
+    Clockwise,
+    Widdershins,
+}
+
+#[derive(Copy, Clone)]
+pub enum Sign {
+    Plus,
+    Minus,
+}
+impl Sign {
+    pub fn to_i8(self) -> i8 {
+        match self {
+            Self::Plus => 1,
+            Self::Minus => -1,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
 pub struct Vec2<T> {
     pub x: T,
     pub y: T,
@@ -73,6 +93,17 @@ impl Pos {
         new_pos
     }
 }
+
+
+impl Orientation {
+    pub fn reverse(self) -> Self {
+        match self {
+            Self::Clockwise => Self::Widdershins,
+            Self::Widdershins => Self::Clockwise,
+        }
+    }
+}
+
 pub type DPos = Vec2<i8>;
 impl DPos {
     pub fn zero() -> Self {
@@ -83,5 +114,23 @@ impl DPos {
     }
     pub fn y_vec(&self) -> Self {
         Self { x: 0, y: self.y }
+    }
+    pub fn scaled(&self, scalar: i8) -> Self {
+        Self {
+            x: self.x * scalar,
+            y: self.y * scalar,
+        }
+    }
+    pub fn rotate(&self, orientation: Orientation) -> Self {
+        match orientation {
+            Orientation::Clockwise => Self {
+                x: -self.y,
+                y: self.x,
+            },
+            Orientation::Widdershins => Self {
+                x: self.y,
+                y: -self.x,
+            },
+        }
     }
 }
