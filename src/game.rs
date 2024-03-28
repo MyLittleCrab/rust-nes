@@ -11,7 +11,7 @@ use crate::{
     ppu,
     rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
-    utils::{debug_value, inc_u8, Addr, DPos, Orientation, Pos, Sign, Vec2},
+    utils::{self, debug_value, inc_u8, Addr, DPos, Orientation, Pos, Sign, Vec2},
 };
 
 // statically allocated memory
@@ -49,6 +49,10 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     }
 }
 
+// no fancy logic here!! we're in NMI
+// in particular, NMI does not play nicely with the heap
+// we can read the length of Vecs but not their contents(?)
+// likely takes too long
 pub fn render() {
     let game = state();
 
@@ -58,26 +62,11 @@ pub fn render() {
         game.grabbed_coin_index = None;
     }
 
-    // let digits = io::u16_to_digits(index as u16);
-    // ppu::write_addr(ORIGIN);
-    // for x in digits {
-    //     ppu::write_data(io::digit_to_ascii(x) - 32);
-    // }
+    // TODO store ascii characters in game to save cycles?
     ppu::write_addr(ORIGIN);
-
-    let digits = io::byte_to_digits(game.n_coins);
-    ppu::write_data(io::digit_to_ascii(digits[1]) - 32);
-    ppu::write_data(io::digit_to_ascii(digits[0]) - 32);
-
-    // print heart location
-    //ppu::write_addr(ORIGIN);
-    // for x in io::byte_to_digits(game.paddle.x) {
-    //     ppu::write_data(io::digit_to_ascii(x) - 32);
-    // }
-    // ppu::write_addr(ORIGIN + 3);
-    // for x in io::byte_to_digits(game.paddle.y) {
-    //     ppu::write_data(io::digit_to_ascii(x) - 32);
-    // }
+    for x in game.n_coins_digits {
+        ppu::write_data(io::digit_to_ascii(x) - 32);
+    }
 }
 
 struct Player {
@@ -100,6 +89,7 @@ pub struct Game {
     tiles: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
+    n_coins_digits: [u8; 3],
     meanies: Vec<Meanie>,
 }
 
@@ -115,6 +105,7 @@ impl Game {
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
             n_coins: 0,
+            n_coins_digits: [0; 3],
             meanies: vec![
                 Meanie {
                     pos: Pos {
@@ -137,7 +128,7 @@ impl Game {
                 Meanie {
                     pos: Pos {
                         x: WIDTH / 3,
-                        y: HEIGHT /2,
+                        y: HEIGHT / 2,
                     },
                     vel: DPos::new(0, -1),
                     orientation: Orientation::Widdershins,
@@ -194,6 +185,15 @@ impl Game {
 
         for meanie in self.meanies.iter_mut() {
             update_meanie(&self.tiles, meanie)
+        }
+        self.n_coins_digits = [0; 3];
+        for (x, y) in self
+            .n_coins_digits
+            .iter_mut()
+            .rev()
+            .zip(utils::u8_to_decimal(self.n_coins).into_iter())
+        {
+            *x = y
         }
     }
 }
@@ -254,7 +254,8 @@ fn check_box_collision(
 
 fn update_meanie(tiles: &[Tile], meanie: &mut Meanie) {
     let mut delta = DPos::zero();
-    for _ in 0..3 { // stop trying after 3 attempts in case we're stuck
+    for _ in 0..3 {
+        // stop trying after 3 attempts in case we're stuck
         delta = meanie.vel.scaled(DT as i8);
         let collision =
             check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);

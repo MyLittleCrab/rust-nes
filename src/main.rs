@@ -7,6 +7,7 @@ extern crate mos_alloc;
 
 use game::Game;
 use sprites::SpriteState;
+use utils::Addr;
 
 mod apu;
 mod constants;
@@ -34,15 +35,18 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
 
     loop {
         io::wait_for_vblank();
+        io::poll_controller(); // here?
         sprites.clear();
         apu.run_sfx();
         game::frame(&mut apu, &mut sprites);
     }
 }
 
+// we are very close to the number of cycles that can fit in
+// the vblank
 #[no_mangle]
 pub extern "C" fn render() {
-    io::poll_controller();
+    //io::poll_controller();
     sprites::dma();
     game::render();
     ppu::reset();
@@ -53,13 +57,22 @@ pub extern "C" fn render() {
 pub static TILES: [u8; 4096] = *include_bytes!("./chr/tiles.chr");
 
 #[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    let mut p = 0xE0 as *mut u8;
-    for ch in "PANIC".chars() {
-        unsafe {
-            *p = ch as u8;
-            p = p.add(1);
-        }
-    }
+fn panic(panic_info: &core::panic::PanicInfo) -> ! {
+    let p = &mut Addr(0xE0);
+    if let Some(location) = panic_info.location() {
+        print_error(location.file(), p);
+        print_error(" line: ", p);
+        p.write(location.line() as u8)
+    } else {
+        print_error("No location", p)
+    };
+
     loop {}
+}
+
+fn print_error(s: &str, p: &mut Addr) {
+    for ch in s.chars() {
+        p.write(ch as u8);
+        p.add(1);
+    }
 }

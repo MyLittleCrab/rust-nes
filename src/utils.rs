@@ -1,5 +1,7 @@
 use core::ops::{Deref, DerefMut};
 
+use alloc::vec::Vec;
+
 #[derive(Copy, Clone)]
 pub struct Addr(pub u16);
 impl Addr {
@@ -15,6 +17,10 @@ impl Addr {
     pub fn offset(self, count: isize) -> Self {
         Addr(self.0 + (count as u16))
     }
+    pub fn add(&mut self, count: isize) {
+        self.0 = self.offset(count).0;
+    }
+
     pub fn addr(self) -> u16 {
         self.0
     }
@@ -94,7 +100,6 @@ impl Pos {
     }
 }
 
-
 impl Orientation {
     pub fn reverse(self) -> Self {
         match self {
@@ -133,4 +138,21 @@ impl DPos {
             },
         }
     }
+}
+
+// this could just return a [u3 ; 3] but i wanted a demo of
+// Vecs working properly
+pub fn u8_to_decimal(b: u8) -> Vec<u8> {
+    let mut digits = Vec::with_capacity(3);
+    let mut a = b;
+    loop {
+        digits.push(a % 10);
+        let div = a / 10;
+        if div == 0 {
+            break;
+        } else {
+            a = div;
+        }
+    }
+    digits
 }
