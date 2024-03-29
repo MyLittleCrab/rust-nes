@@ -16,6 +16,7 @@ mod game;
 mod io;
 mod level;
 mod ppu;
+mod ppu_buffer;
 mod rng;
 mod sprites;
 mod utils;
@@ -29,7 +30,10 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     apu::init();
     let mut apu = apu::APU::default();
     let mut sprites = SpriteState::default();
-    game::init();
+    let mut game = None;
+    Game::new(&mut game);
+
+    game::init(game.as_mut().unwrap());
 
     ppu::enable_nmi();
 
@@ -38,17 +42,23 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
         io::poll_controller(); // here?
         sprites.clear();
         apu.run_sfx();
-        game::frame(&mut apu, &mut sprites);
+        game::frame(game.as_mut().unwrap(), &mut apu, &mut sprites);
     }
 }
 
+// no fancy logic here!! we're in NMI
+// in particular, NMI does not play nicely with the heap
+// we can read the length of Vecs but not their contents(?)
+// likely takes too long
 // we are very close to the number of cycles that can fit in
 // the vblank
 #[no_mangle]
 pub extern "C" fn render() {
     //io::poll_controller();
     sprites::dma();
-    game::render();
+
+    ppu_buffer::render();
+
     ppu::reset();
 }
 

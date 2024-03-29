@@ -9,25 +9,14 @@ use crate::{
     io,
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
     ppu,
+    ppu_buffer::{self, BufferDirective},
     rng::{cycle_rng, get_rng},
     sprites::{self, SpriteState},
     utils::{self, debug_value, inc_u8, Addr, DPos, Orientation, Pos, Sign, Vec2},
 };
 
-// statically allocated memory
-static mut STATE: Option<Game> = None;
-
-/// do not call this more than once in the same scope (!)
-fn state() -> &'static mut Game {
-    unsafe { STATE.as_mut().unwrap() }
-}
-
-pub fn init() {
-    unsafe {
-        Game::new(&mut *addr_of_mut!(STATE));
-    }
-    let game = state();
-
+// called before enabling nmi
+pub fn init(game: &mut Game) {
     // palettes
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
     ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);
@@ -38,34 +27,13 @@ pub fn init() {
     ppu::draw_ascii(ORIGIN + 0x06, "HEART-MAN");
 }
 
-pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
-    let game = state();
+pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
     game.step(apu);
 
     sprites.add(&game.player.pos, HEART_SPRITE, 0);
 
     for meanie in game.meanies.iter() {
         sprites.add(&meanie.pos, AT_SPRITE, 0)
-    }
-}
-
-// no fancy logic here!! we're in NMI
-// in particular, NMI does not play nicely with the heap
-// we can read the length of Vecs but not their contents(?)
-// likely takes too long
-pub fn render() {
-    let game = state();
-
-    if let Some(index) = game.grabbed_coin_index {
-        ppu::write_addr(ORIGIN + index);
-        ppu::write_data(HEART_SPRITE);
-        game.grabbed_coin_index = None;
-    }
-
-    // TODO store ascii characters in game to save cycles?
-    ppu::write_addr(ORIGIN);
-    for x in game.n_coins_digits {
-        ppu::write_data(io::digit_to_ascii(x) - 32);
     }
 }
 
@@ -89,7 +57,6 @@ pub struct Game {
     tiles: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
-    n_coins_digits: [u8; 3],
     meanies: Vec<Meanie>,
 }
 
@@ -105,7 +72,6 @@ impl Game {
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
             n_coins: 0,
-            n_coins_digits: [0; 3],
             meanies: vec![
                 Meanie {
                     pos: Pos {
@@ -186,16 +152,36 @@ impl Game {
         for meanie in self.meanies.iter_mut() {
             update_meanie(&self.tiles, meanie)
         }
-        self.n_coins_digits = [0; 3];
-        for (x, y) in self
-            .n_coins_digits
-            .iter_mut()
-            .rev()
-            .zip(utils::u8_to_decimal(self.n_coins).into_iter())
-        {
-            *x = y
+
+        self.draw()
+    }
+
+    fn draw(&mut self) {
+        ppu_buffer::clear();
+        ppu_buffer::push(BufferDirective::Index(ORIGIN));
+        ppu_buffer::extend(draw_digits(self.n_coins));
+
+        if let Some(index) = self.grabbed_coin_index {
+            ppu_buffer::push(BufferDirective::Index(ORIGIN + index));
+            ppu_buffer::push(BufferDirective::Tile(HEART_SPRITE));
+            self.grabbed_coin_index = None;
         }
     }
+}
+
+fn draw_digits(x: u8) -> Vec<BufferDirective> {
+    let mut digits = [0; 3];
+    for (x, y) in digits
+        .iter_mut()
+        .rev()
+        .zip(utils::u8_to_decimal(x).into_iter())
+    {
+        *x = y
+    }
+    digits
+        .map(|d| BufferDirective::Tile(io::digit_to_ascii(d) - 32))
+        .into_iter()
+        .collect()
 }
 
 fn player_movement_delta(buttons: u8, player_pos: &Pos) -> DPos {
