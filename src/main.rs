@@ -6,6 +6,7 @@ extern crate alloc;
 extern crate mos_alloc;
 
 use game::Game;
+use rng::Rng;
 use sprites::SpriteState;
 use utils::Addr;
 

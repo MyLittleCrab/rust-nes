@@ -1,7 +1,7 @@
 use crate::{
     constants::{COIN_SPRITE, N_ROWS, ORIGIN, ROW, WALL_SPRITE},
     ppu,
-    rng::{cycle_rng, get_rng},
+    rng::Rng,
     utils::Pos,
 };
 
@@ -16,12 +16,12 @@ pub enum Tile {
 //     transmute::<&[u8], &[Tile]>(include_bytes!("test_level.dat"))
 // };
 
-pub fn make_level<const N: usize>(tiles: &mut [Tile; N]) {
+pub fn make_level<const N: usize>(tiles: &mut [Tile; N], rng: &mut Rng) {
     for t in tiles.iter_mut() {
-        cycle_rng();
-        if get_rng() % 4 == 0 {
+        rng.cycle();
+        if rng.get() % 4 == 0 {
             *t = Tile::Wall;
-        } else if get_rng() % 41 == 1 {
+        } else if rng.get() % 41 == 1 {
             *t = Tile::Coin;
         }
     }

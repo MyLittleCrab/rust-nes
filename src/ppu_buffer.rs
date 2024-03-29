@@ -2,10 +2,12 @@ use core::ptr::addr_of_mut;
 
 use alloc::vec::Vec;
 
-use crate::ppu;
+use crate::{ppu, utils::CappedVec};
 
 const BUFFER_SIZE: usize = 6;
 
+// needs to be accessible during vblank (nmi call)
+// should be the only global variable
 static mut PPU_BUFFER: Buffer<BUFFER_SIZE> = Buffer::INIT;
 
 fn buffer() -> &'static mut Buffer<BUFFER_SIZE> {
@@ -22,32 +24,13 @@ pub enum BufferDirective {
 }
 
 // can't seem to query Vecs from nmi so...
-pub struct Buffer<const N: usize> {
-    pub directives: [BufferDirective; N],
-    len: usize,
-}
+pub type Buffer<const N: usize> = CappedVec<BufferDirective, N>;
 // TODO impl iterator
 impl<const N: usize> Buffer<N> {
-    const INIT: Self = Self {
+    const INIT: Self = CappedVec {
         directives: [BufferDirective::Done; N],
         len: 0,
     };
-    pub fn clear(&mut self) {
-        self.len = 0;
-    }
-    pub fn push(&mut self, x: BufferDirective) {
-        if self.len < N {
-            self.directives[self.len] = x;
-            self.len += 1;
-        } else {
-            panic!("Buffer full")
-        }
-    }
-    pub fn extend(&mut self, xs: Vec<BufferDirective>) {
-        for x in xs {
-            self.push(x)
-        }
-    }
 }
 
 pub fn render() {

@@ -10,7 +10,7 @@ use crate::{
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
     ppu,
     ppu_buffer::{self, BufferDirective},
-    rng::{cycle_rng, get_rng},
+    rng::Rng,
     sprites::{self, SpriteState},
     utils::{self, debug_value, inc_u8, Addr, DPos, Orientation, Pos, Sign, Vec2},
 };
@@ -41,8 +41,6 @@ struct Player {
     pos: Pos,
 }
 
-//const N_MEANIES: usize = 1;
-
 struct Meanie {
     pos: Pos,
     vel: DPos,
@@ -58,11 +56,13 @@ pub struct Game {
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
     meanies: Vec<Meanie>,
+    rng: Rng,
 }
 
 impl Game {
     pub fn new(some_game: &mut Option<Game>) {
         *some_game = Some(Self {
+            rng: Rng::new(None),
             player: Player {
                 pos: Pos {
                     x: WIDTH / 2,
@@ -94,7 +94,7 @@ impl Game {
                 Meanie {
                     pos: Pos {
                         x: WIDTH / 3,
-                        y: HEIGHT / 2,
+                        y: HEIGHT / 2 - 16,
                     },
                     vel: DPos::new(0, -1),
                     orientation: Orientation::Widdershins,
@@ -103,7 +103,7 @@ impl Game {
             ],
         });
         let game = some_game.as_mut().unwrap();
-        make_level(&mut game.tiles);
+        make_level(&mut game.tiles, &mut game.rng);
 
         game.n_coins = game
             .tiles
