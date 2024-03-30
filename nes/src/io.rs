@@ -1,4 +1,4 @@
-use crate::utils::Addr;
+use crate::addr::Addr;
 // need to import at least one C function to force the linker to work (?)
 extern "C" {
     fn wait_vblank();
@@ -6,6 +6,10 @@ extern "C" {
 
 pub fn wait_for_vblank() {
     unsafe { wait_vblank() };
+    // Addr(0x80).write(0);
+    // while Addr(0x80).read() == 0 {
+
+    // }
 }
 
 pub fn _set_chr_bank(bank: u8) {

@@ -6,6 +6,7 @@ extern crate alloc;
 extern crate mos_alloc;
 
 use game::Game;
+use nes::{io, ppu};
 use rng::Rng;
 use sprites::SpriteState;
 use utils::Addr;
@@ -14,9 +15,7 @@ mod apu;
 mod constants;
 mod game;
 //mod breakout;
-mod io;
 mod level;
-mod ppu;
 mod ppu_buffer;
 mod rng;
 mod sprites;

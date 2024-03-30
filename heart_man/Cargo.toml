@@ -1,9 +1,7 @@
-[workspace]
-
-members = [
-    "nes",
-    "heart_man",
-]
+[package]
+name = "game"
+version = "0.1.0"
+edition = "2021"
 
 [profile.dev]
 opt-level = "s"
@@ -21,3 +19,16 @@ debug = false
 debug-assertions = false
 panic = "abort"
 codegen-units = 1
+
+[build-dependencies]
+cc = { version = "1.0"}
+
+[features]
+skip-legal = []
+stress = []
+debug = []
+tas-compat = []
+
+[dependencies]
+nes = { path = "../nes"}
+mos-alloc = "0.2.0"

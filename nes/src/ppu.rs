@@ -1,4 +1,4 @@
-use crate::utils::Addr;
+use crate::addr::Addr;
 
 const CTRL_VRAM_INC: u8 = 0b100;
 const _CTRL_NMI: u8 = 0b10000000;
