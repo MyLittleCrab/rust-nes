@@ -12,7 +12,7 @@ fn state() -> &'static mut Game {
     unsafe { STATE.as_mut().unwrap() }
 }
 
-pub fn init() {
+pub unsafe fn init() {
     unsafe {
         STATE = Some(Game::new());
     }
@@ -55,7 +55,7 @@ pub fn frame(apu: &mut apu::APU, sprites: &mut SpriteState) {
     }
 }
 
-pub fn render() {
+pub unsafe fn render() {
     let game = state();
 
     game.destroyed.iter_mut().for_each(|des| {
@@ -190,9 +190,11 @@ impl Game {
         if self.ball.dy == 0 {
             // dead
             if buttons & io::START != 0 {
-                ppu::disable_nmi();
-                init();
-                ppu::enable_nmi();
+                unsafe {
+                    ppu::disable_nmi();
+                    init();
+                    ppu::enable_nmi();
+                }
             }
             return;
         }

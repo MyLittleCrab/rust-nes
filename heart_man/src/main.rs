@@ -35,9 +35,13 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     let mut game = None;
     Game::new(&mut game);
 
-    game::init(game.as_mut().unwrap());
+    unsafe {
+        game::init(game.as_mut().unwrap());
+    }
 
-    ppu::enable_nmi();
+    unsafe {
+        ppu::enable_nmi();
+    }
 
     loop {
         io::wait_for_vblank();
@@ -57,9 +61,11 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
 #[no_mangle]
 pub extern "C" fn render() {
     //io::poll_controller();
-    sprites::dma();
-    Buffer::render();
-    ppu::reset();
+    unsafe {
+        sprites::dma();
+        Buffer::render();
+        ppu::reset();
+    }
 }
 
 #[link_section = ".chr_rom"]
@@ -72,7 +78,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
     if let Some(location) = panic_info.location() {
         print_error(location.file(), p);
         print_error(" line: ", p);
-        p.write(location.line() as u8)
+        unsafe { p.write(location.line() as u8) }
     } else {
         print_error("No location", p)
     };
@@ -82,7 +88,9 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 
 fn print_error(s: &str, p: &mut Addr) {
     for ch in s.chars() {
-        p.write(ch as u8);
+        unsafe {
+            p.write(ch as u8);
+        }
         p.add(1);
     }
 }

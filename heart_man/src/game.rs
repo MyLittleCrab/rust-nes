@@ -22,7 +22,7 @@ use crate::{
 };
 
 // called before enabling nmi
-pub fn init(game: &mut Game) {
+pub unsafe fn init(game: &mut Game) {
     // palettes
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
     ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);

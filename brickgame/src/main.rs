@@ -15,9 +15,10 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     apu::init();
     let mut apu = apu::APU::default();
     let mut sprite_state = sprites::SpriteState::default();
-    game::init();
-
-    ppu::enable_nmi();
+    unsafe {
+        game::init();
+        ppu::enable_nmi();
+    }
 
     loop {
         io::wait_for_vblank();
@@ -31,10 +32,12 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
 #[no_mangle]
 pub extern "C" fn render() {
     io::poll_controller();
-    sprites::dma();
-    game::render();
-    ppu::write_addr(0x2000);
-    ppu::scroll(0, 0);
+    unsafe {
+        sprites::dma();
+        game::render();
+        ppu::write_addr(0x2000);
+        ppu::scroll(0, 0);
+    }
 }
 
 #[link_section = ".chr_rom"]

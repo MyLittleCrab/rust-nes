@@ -42,7 +42,7 @@ pub fn make_level<const N: usize>(tiles: &mut [Tile; N], rng: &mut Rng) {
     // }
 }
 
-pub fn draw_level<const N: usize>(tiles: &mut [Tile; N]) {
+pub unsafe fn draw_level<const N: usize>(tiles: &mut [Tile; N]) {
     // draw level tiles
     ppu::write_addr(ORIGIN);
 

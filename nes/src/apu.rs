@@ -5,6 +5,19 @@ const PULSE1: Addr = Addr(0x4000);
 #[allow(dead_code)]
 const PULSE2: Addr = Addr(0x4004);
 
+pub enum Channel {
+    Pulse1,
+    Pulse2,
+}
+impl Channel {
+    fn addr(self) -> Addr {
+        match self {
+            Channel::Pulse1 => PULSE1,
+            Channel::Pulse2 => PULSE2,
+        }
+    }
+}
+
 #[derive(PartialEq)]
 pub enum Sfx {
     ChangeScreen,
@@ -34,29 +47,38 @@ pub fn init() {
     *APU.offset(0x17) = 0x40;
 }
 
-fn sfx_frame(p: Addr, hi: u8, lo: u8, dcvol: u8) -> bool {
-    p.offset(2).write(lo);
-    p.offset(3).write(hi); // only lower 3 bits matter
-    p.write(dcvol);
+fn sfx_frame(c: Channel, hi: u8, lo: u8, dcvol: u8) -> bool {
+    let p = c.addr();
+    unsafe {
+        p.offset(2).write(lo);
+        p.offset(3).write(hi); // only lower 3 bits matter
+        p.write(dcvol);
+    }
     true
 }
 
-fn sfx_end(p: Addr) -> bool {
-    p.write(0);
+fn sfx_end(c: Channel) -> bool {
+    unsafe {
+        c.addr().write(0);
+    }
     false
 }
 
 #[allow(dead_code)]
 fn noise_frame(tp: u8, vol: u8) -> bool {
-    APU.offset(0xC).write(vol);
-    APU.offset(0xE).write(tp);
+    unsafe {
+        APU.offset(0xC).write(vol);
+        APU.offset(0xE).write(tp);
+    }
     true
 }
 
 #[allow(dead_code)]
 fn noise_end() -> bool {
-    APU.offset(0xC).write(0b110000);
-    APU.offset(0xE).write(0);
+    unsafe {
+        APU.offset(0xC).write(0b110000);
+        APU.offset(0xE).write(0);
+    }
     false
 }
 
@@ -83,49 +105,54 @@ impl APU {
         }
         let cont = match self.sfx {
             Sfx::ChangeScreen | Sfx::Pause => match self.sfx_off {
-                ..=5 => sfx_frame(PULSE1, 1, 0x7C, 0b10111111),
-                ..=10 => sfx_frame(PULSE1, 1, 0xc4, 0b10111111),
-                ..=15 => sfx_frame(PULSE1, 0, 0xbf, 0b10111111),
+                ..=5 => sfx_frame(Channel::Pulse1, 1, 0x7C, 0b10111111),
+                ..=10 => sfx_frame(Channel::Pulse1, 1, 0xc4, 0b10111111),
+                ..=15 => sfx_frame(Channel::Pulse1, 0, 0xbf, 0b10111111),
                 _ => {
-                    PULSE1.offset(3).write(7);
-                    sfx_end(PULSE1)
+                    // TODO: what does this do?
+                    unsafe {
+                        Channel::Pulse1.addr().offset(3).write(7);
+                    }
+                    sfx_end(Channel::Pulse1)
                 }
             },
             Sfx::MenuBoop => match self.sfx_off {
-                ..=2 => sfx_frame(PULSE1, 0, 0x90, 0b10110111),
-                _ => sfx_end(PULSE1),
+                ..=2 => sfx_frame(Channel::Pulse1, 0, 0x90, 0b10110111),
+                _ => sfx_end(Channel::Pulse1),
             },
             Sfx::Shift => match self.sfx_off {
-                ..=2 => sfx_frame(PULSE1, 1, 0x7C, 0b10110111),
-                _ => sfx_end(PULSE1),
+                ..=2 => sfx_frame(Channel::Pulse1, 1, 0x7C, 0b10110111),
+                _ => sfx_end(Channel::Pulse1),
             },
             Sfx::Lock => match self.sfx_off {
-                ..=2 => sfx_frame(PULSE1, 5, 0x9d, 0b10110110),
-                ..=3 => sfx_frame(PULSE1, 6, 0xad, 0b10110110),
-                _ => sfx_end(PULSE1),
+                ..=2 => sfx_frame(Channel::Pulse1, 5, 0x9d, 0b10110110),
+                ..=3 => sfx_frame(Channel::Pulse1, 6, 0xad, 0b10110110),
+                _ => sfx_end(Channel::Pulse1),
             },
             Sfx::Rotate => match self.sfx_off {
-                ..=1 => sfx_frame(PULSE1, 1, 0x7c, 0b10110110),
-                ..=3 => sfx_frame(PULSE1, 2, 0x1A, 0b10110000),
-                ..=5 => sfx_frame(PULSE1, 1, 0x7c, 0b10110110),
-                _ => sfx_end(PULSE1),
+                ..=1 => sfx_frame(Channel::Pulse1, 1, 0x7c, 0b10110110),
+                ..=3 => sfx_frame(Channel::Pulse1, 2, 0x1A, 0b10110000),
+                ..=5 => sfx_frame(Channel::Pulse1, 1, 0x7c, 0b10110110),
+                _ => sfx_end(Channel::Pulse1),
             },
             Sfx::Burn | Sfx::FourLineClear | Sfx::LevelUp => {
                 const NOTES: &[u8] = &[0xfb, 0xc4, 0x93, 0x67, 0x3f, 0x1c];
 
                 if self.sfx_off / 4 >= NOTES.len() {
-                    PULSE1.offset(3).write(7);
-                    sfx_end(PULSE1)
+                    unsafe {
+                        Channel::Pulse1.addr().offset(3).write(7);
+                    }
+                    sfx_end(Channel::Pulse1)
                 } else {
-                    sfx_frame(PULSE1, 1, NOTES[self.sfx_off / 4], 0b10111111)
+                    sfx_frame(Channel::Pulse1, 1, NOTES[self.sfx_off / 4], 0b10111111)
                 }
             }
             Sfx::Topout => match self.sfx_off {
-                ..=5 => sfx_frame(PULSE1, 4, 0x34, 0b10111110),
-                ..=15 => sfx_frame(PULSE1, 4, 0xb8, 0b10111000),
-                ..=20 => sfx_frame(PULSE1, 5, 0x4c, 0b10111110),
-                ..=25 => sfx_frame(PULSE1, 5, 0xf3, 0b10110110),
-                _ => sfx_end(PULSE1),
+                ..=5 => sfx_frame(Channel::Pulse1, 4, 0x34, 0b10111110),
+                ..=15 => sfx_frame(Channel::Pulse1, 4, 0xb8, 0b10111000),
+                ..=20 => sfx_frame(Channel::Pulse1, 5, 0x4c, 0b10111110),
+                ..=25 => sfx_frame(Channel::Pulse1, 5, 0xf3, 0b10110110),
+                _ => sfx_end(Channel::Pulse1),
             },
             Sfx::None => unreachable!(),
         };

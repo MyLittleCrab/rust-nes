@@ -46,7 +46,7 @@ impl SpriteState {
     }
 }
 
-pub fn dma() {
+pub unsafe fn dma() {
     OAM_ADDR.write(0);
     OAM_DMA.write((ADDR.addr() >> 8) as u8);
 }

@@ -27,7 +27,7 @@ impl<const N: usize> Buffer<N> {
 pub trait BufferTrait<const N: usize> {
     const BUFFER_SIZE: usize = N;
     unsafe fn buffer() -> &'static mut Buffer<N>;
-    fn render() {
+    unsafe fn render() {
         for d in unsafe { Self::buffer() }.directives.iter() {
             match *d {
                 BufferDirective::Done => break,

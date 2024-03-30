@@ -9,54 +9,57 @@ const PPU_SCROLL: Addr = Addr(0x2005);
 const PPU_ADDR: Addr = Addr(0x2006);
 const PPU_DATA: Addr = Addr(0x2007);
 
-pub fn reset() {
+// all calls to PPU are unsafe because they may only
+// be safely made during the vblank interval
+pub unsafe fn reset() {
     write_addr(PPU_CTRL.addr());
     scroll(0, 0);
 }
-pub fn write_ctrl(value: u8) {
+pub unsafe fn write_ctrl(value: u8) {
     PPU_CTRL.write(value)
 }
 
-pub fn and_ctrl(value: u8) {
+pub unsafe fn and_ctrl(value: u8) {
     let next = PPU_CTRL.read() & value;
     PPU_CTRL.write(next);
 }
 
-pub fn or_ctrl(value: u8) {
+pub unsafe fn or_ctrl(value: u8) {
     let next = PPU_CTRL.read() | value;
     PPU_CTRL.write(next);
 }
 
-pub fn write_mask(value: u8) {
+pub unsafe fn write_mask(value: u8) {
     PPU_MASK.write(value);
 }
 
-pub fn write_addr(value: u16) {
+pub unsafe fn write_addr(value: u16) {
     PPU_ADDR.write((value >> 8) as u8);
     PPU_ADDR.write(value as u8);
 }
 
-pub fn write_data(value: u8) {
+pub unsafe fn write_data(value: u8) {
     PPU_DATA.write(value);
 }
 
-pub fn scroll(x: u8, y: u8) {
+pub unsafe fn scroll(x: u8, y: u8) {
     PPU_SCROLL.write(x);
     PPU_SCROLL.write(y)
 }
 
-pub fn enable_nmi() {
+// TODO: are enable / disable nmi safe?
+pub unsafe fn enable_nmi() {
     write_ctrl(0x80);
     write_mask(0x1E);
 }
 
-pub fn disable_nmi() {
+pub unsafe fn disable_nmi() {
     write_mask(0);
     write_ctrl(0);
 }
 
 #[inline(never)]
-pub fn clear_nametable() {
+pub unsafe fn clear_nametable() {
     write_addr(PPU_CTRL.addr());
     for _ in 0..0x400 {
         write_data(0);
@@ -64,7 +67,7 @@ pub fn clear_nametable() {
 }
 
 #[inline(never)]
-pub fn draw_text(text: &str) {
+pub unsafe fn draw_text(text: &str) {
     for ch in text.chars() {
         write_data(ch as u8 - 32);
     }
@@ -78,7 +81,7 @@ pub fn draw_text(text: &str) {
 // }
 
 #[inline(never)]
-pub fn draw_ascii(off: u16, ascii: &str) {
+pub unsafe fn draw_ascii(off: u16, ascii: &str) {
     for (i, line) in ascii.split("\n").enumerate() {
         write_addr(off + (0x20 * i as u16));
         draw_text(line);
@@ -86,7 +89,7 @@ pub fn draw_ascii(off: u16, ascii: &str) {
 }
 
 #[inline(never)]
-pub fn draw_box(x: u8, y: u8, w: u8, h: u8) {
+pub unsafe fn draw_box(x: u8, y: u8, w: u8, h: u8) {
     const BOX_TILES: u8 = 0x73;
     let offset = 0x2000 + (x as u16 + (y as u16 * 0x20));
     // -
@@ -119,7 +122,7 @@ pub fn draw_box(x: u8, y: u8, w: u8, h: u8) {
 
 pub const STR_OFFSET: u8 = 0x10;
 
-pub fn write_bytes(offset: u16, pal: &[u8]) {
+pub unsafe fn write_bytes(offset: u16, pal: &[u8]) {
     write_addr(offset);
 
     pal.iter().for_each(|byte| {
