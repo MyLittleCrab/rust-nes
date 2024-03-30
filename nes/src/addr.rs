@@ -1,7 +1,4 @@
-use core::{
-    ops::{Deref, DerefMut},
-};
-
+use core::ops::{Deref, DerefMut};
 
 #[derive(Copy, Clone)]
 pub struct Addr(pub u16);

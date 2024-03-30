@@ -2,7 +2,7 @@ use core::ptr::addr_of_mut;
 
 use alloc::vec::Vec;
 
-use crate::{ppu, utils::CappedVec};
+use crate::{capped_vec::CappedVec, ppu};
 
 const BUFFER_SIZE: usize = 20;
 

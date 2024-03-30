@@ -1,6 +1,6 @@
+use crate::addr::Addr;
 use crate::constants::{LEFT_MARGIN, ROW, TOP_MARGIN};
-use crate::ppu;
-use crate::utils::{Addr, Pos};
+use crate::vec2::Pos;
 
 const ADDR: Addr = Addr(0x200);
 const OAM_DMA: Addr = Addr(0x4014);
@@ -15,10 +15,6 @@ impl SpritePos {
             y: LEFT_MARGIN + pos.y - 1,
         })
     }
-}
-
-fn map_pos_to_sprite_index(pos: &Pos) -> u16 {
-    return (pos.x as u16) / 8 + (pos.y as u16 / 8) * (ROW as u16) + 2 + (ROW as u16) * 2;
 }
 
 pub struct SpriteState {

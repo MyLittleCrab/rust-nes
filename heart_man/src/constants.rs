@@ -1,7 +1,5 @@
-pub const LEFT_MARGIN: u8 = 16;
-pub const TOP_MARGIN: u8 = 16;
+use nes::constants::ROW;
 
-pub const ROW: u8 = 0x20;
 pub const N_ROWS: u8 = 29; // 29 fills screen
 pub const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
 

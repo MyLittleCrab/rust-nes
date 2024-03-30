@@ -1,8 +1,9 @@
+use nes::{constants::ROW, vec2::Pos};
+
 use crate::{
-    constants::{COIN_SPRITE, N_ROWS, ORIGIN, ROW, WALL_SPRITE},
+    constants::{COIN_SPRITE, N_ROWS, ORIGIN, WALL_SPRITE},
     ppu,
     rng::Rng,
-    utils::Pos,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]

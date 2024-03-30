@@ -2,21 +2,26 @@ use core::{mem::transmute, ptr::addr_of_mut};
 
 use alloc::vec;
 use alloc::vec::Vec;
+use nes::{
+    apu::{self, Sfx},
+    io, ppu,
+    ppu_buffer::{self, BufferDirective},
+    sprites::SpriteState,
+    utils::Sign,
+    vec2::{DPos, Orientation, Pos, Vec2},
+};
 
 // TODO:
 // separate out generic NES crate
 // add examples: heart man, rewritten brickout
 
 use crate::{
-    apu::{self, Sfx},
-    constants::{AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH, ROW, WIDTH},
-    io,
+    constants::{
+        AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH, WIDTH,
+    },
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
-    ppu,
-    ppu_buffer::{self, BufferDirective},
     rng::Rng,
-    sprites::{self, SpriteState},
-    utils::{self, debug_value, inc_u8, Addr, DPos, Orientation, Pos, Sign, Vec2},
+    utils::u8_to_decimal,
 };
 
 // called before enabling nmi
@@ -34,7 +39,15 @@ pub fn init(game: &mut Game) {
 pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
     game.step(apu);
 
-    sprites.add(&game.player.pos, if game.player.dead {'x' as u8 - 32} else {HEART_SPRITE}, 0);
+    sprites.add(
+        &game.player.pos,
+        if game.player.dead {
+            'x' as u8 - 32
+        } else {
+            HEART_SPRITE
+        },
+        0,
+    );
 
     for meanie in game.meanies.iter() {
         sprites.add(&meanie.pos, AT_SPRITE, 0)
@@ -69,11 +82,8 @@ impl Game {
         *some_game = Some(Self {
             rng: Rng::new(None),
             player: Player {
-                pos: Pos {
-                    x: 16,
-                    y: 0,
-                },
-                dead: false
+                pos: Pos { x: 16, y: 0 },
+                dead: false,
             },
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
@@ -91,10 +101,10 @@ impl Game {
                 Meanie {
                     pos: Pos {
                         x: WIDTH / 3,
-                        y: HEIGHT - 20,
+                        y: HEIGHT - 12,
                     },
-                    vel: DPos::new(0, 1),
-                    orientation: Orientation::Widdershins,
+                    vel: DPos::new(1, 0),
+                    orientation: Orientation::Clockwise,
                     n_turns: 0,
                 },
                 Meanie {
@@ -141,7 +151,6 @@ impl Game {
             }
         }
 
-
         self.draw()
     }
 
@@ -160,11 +169,7 @@ impl Game {
 
 fn draw_digits(x: u8) -> Vec<BufferDirective> {
     let mut digits = [0; 3];
-    for (x, y) in digits
-        .iter_mut()
-        .rev()
-        .zip(utils::u8_to_decimal(x).into_iter())
-    {
+    for (x, y) in digits.iter_mut().rev().zip(u8_to_decimal(x).into_iter()) {
         *x = y
     }
     digits
@@ -179,7 +184,7 @@ fn on_player_death(apu: &mut apu::APU) {
 }
 fn update_player(player: &mut Player, tiles: &[Tile], apu: &mut apu::APU) {
     if player.dead {
-        return
+        return;
     }
     let mut player_delta = player_movement_delta(io::controller_buttons(), &player.pos);
 

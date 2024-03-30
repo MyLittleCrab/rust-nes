@@ -2,8 +2,6 @@ a template for writing NES games in Rust
 
 includes an example game that uses sprites, background tiles, sfx, and controller input
 
-https://user-images.githubusercontent.com/4498266/236694027-57e3ce69-e359-4147-950b-7dbcf5999705.mp4
-
 ## building
 
 ```bash
@@ -16,5 +14,6 @@ cargo rustc --release
 
 ## attribution
 
+* forked from https://github.com/kirjavascript/rust-nes-tmp
 * linker help https://github.com/jgouly
 * toolchain https://llvm-mos.org/wiki/Rust

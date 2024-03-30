@@ -1,5 +1,5 @@
 // https://www.nesdev.org/wiki/APU_basics
-use crate::utils::Addr;
+use crate::addr::Addr;
 const APU: Addr = Addr(0x4000);
 const PULSE1: Addr = Addr(0x4000);
 #[allow(dead_code)]
@@ -137,7 +137,7 @@ impl APU {
         }
     }
 
-    pub(crate) fn is_playing(&self) -> bool {
+    pub fn is_playing(&self) -> bool {
         self.sfx != Sfx::None
     }
 }
