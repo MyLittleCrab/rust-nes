@@ -101,6 +101,15 @@ impl Pos {
         new_pos.inc(delta);
         new_pos
     }
+    pub fn delta(&self, other: &Pos) -> DPos {
+        DPos {
+            x: (self.x as i8) - (other.x as i8),
+            y: (self.y as i8) - (other.y as i8)
+        }
+    }
+    pub fn l1_dist(&self, other: &Pos) -> u8 {
+        self.delta(other).l1_norm()
+    }
 }
 
 impl Orientation {
@@ -141,6 +150,9 @@ impl DPos {
             },
         }
     }
+    pub fn l1_norm(&self) -> u8 {
+        (self.x).abs() as u8 + (self.y).abs() as u8
+    }
 }
 
 // this could just return a [u3 ; 3] but i wanted a demo of
@@ -174,7 +186,7 @@ impl<T, const N: usize> CappedVec<T, N> {
             self.directives[self.len] = x;
             self.len += 1;
         } else {
-            panic!("Buffer full")
+            panic!("Vec full")
         }
     }
     pub fn extend(&mut self, xs: Vec<T>) {

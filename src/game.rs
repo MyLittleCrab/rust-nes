@@ -3,9 +3,13 @@ use core::{mem::transmute, ptr::addr_of_mut};
 use alloc::vec;
 use alloc::vec::Vec;
 
+// TODO:
+// separate out generic NES crate
+// add examples: heart man, rewritten brickout
+
 use crate::{
     apu::{self, Sfx},
-    constants::{AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_WIDTH, ROW, WIDTH},
+    constants::{AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH, ROW, WIDTH},
     io,
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
     ppu,
@@ -30,7 +34,7 @@ pub fn init(game: &mut Game) {
 pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
     game.step(apu);
 
-    sprites.add(&game.player.pos, HEART_SPRITE, 0);
+    sprites.add(&game.player.pos, if game.player.dead {'x' as u8 - 32} else {HEART_SPRITE}, 0);
 
     for meanie in game.meanies.iter() {
         sprites.add(&meanie.pos, AT_SPRITE, 0)
@@ -39,6 +43,7 @@ pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
 
 struct Player {
     pos: Pos,
+    dead: bool,
 }
 
 struct Meanie {
@@ -51,12 +56,12 @@ struct Meanie {
 type Collision = Vec2<Option<Sign>>;
 
 pub struct Game {
+    rng: Rng,
     player: Player,
     tiles: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
     meanies: Vec<Meanie>,
-    rng: Rng,
 }
 
 impl Game {
@@ -65,9 +70,10 @@ impl Game {
             rng: Rng::new(None),
             player: Player {
                 pos: Pos {
-                    x: WIDTH / 2,
-                    y: HEIGHT - 10,
+                    x: 16,
+                    y: 0,
                 },
+                dead: false
             },
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
@@ -116,27 +122,7 @@ impl Game {
     }
 
     fn step(&mut self, apu: &mut apu::APU) {
-        let mut player_delta = player_movement_delta(io::controller_buttons(), &self.player.pos);
-
-        let collision = check_box_collision(
-            &self.tiles,
-            Tile::Wall,
-            PLAYER_WIDTH as i8,
-            &self.player.pos,
-            &player_delta,
-        );
-        if let Some(_) = collision.x {
-            player_delta.x = 0;
-            if !apu.is_playing() {
-                apu.play_sfx(Sfx::Lock);
-            }
-        }
-        if let Some(_) = collision.y {
-            player_delta.y = 0;
-            if !apu.is_playing() {
-                apu.play_sfx(Sfx::Lock);
-            }
-        }
+        update_player(&mut self.player, &self.tiles, apu);
 
         let player_center = self.player.pos.shifted(&DPos::new(4, 4));
         if let Tile::Coin = get_tile_at(&self.tiles, &player_center) {
@@ -147,11 +133,14 @@ impl Game {
             apu.play_sfx(Sfx::LevelUp);
         }
 
-        self.player.pos.inc(&player_delta);
-
         for meanie in self.meanies.iter_mut() {
-            update_meanie(&self.tiles, meanie)
+            update_meanie(&self.tiles, meanie);
+            if !self.player.dead && (self.player.pos.l1_dist(&meanie.pos) < PLAYER_WIDTH) {
+                on_player_death(apu);
+                self.player.dead = true;
+            }
         }
+
 
         self.draw()
     }
@@ -183,21 +172,54 @@ fn draw_digits(x: u8) -> Vec<BufferDirective> {
         .into_iter()
         .collect()
 }
+fn on_player_death(apu: &mut apu::APU) {
+    apu.play_sfx(Sfx::Topout);
+    ppu_buffer::push(BufferDirective::Index(ORIGIN + 15));
+    ppu_buffer::draw_text(" IS DEAD");
+}
+fn update_player(player: &mut Player, tiles: &[Tile], apu: &mut apu::APU) {
+    if player.dead {
+        return
+    }
+    let mut player_delta = player_movement_delta(io::controller_buttons(), &player.pos);
+
+    let collision = check_box_collision(
+        &tiles,
+        Tile::Wall,
+        PLAYER_WIDTH as i8,
+        &player.pos,
+        &player_delta,
+    );
+    if let Some(_) = collision.x {
+        player_delta.x = 0;
+        if !apu.is_playing() {
+            apu.play_sfx(Sfx::Lock);
+        }
+    }
+    if let Some(_) = collision.y {
+        player_delta.y = 0;
+        if !apu.is_playing() {
+            apu.play_sfx(Sfx::Lock);
+        }
+    }
+
+    player.pos.inc(&player_delta);
+}
 
 fn player_movement_delta(buttons: u8, player_pos: &Pos) -> DPos {
     let mut delta = DPos::zero();
 
     if buttons & io::LEFT != 0 && player_pos.x > 0 {
-        delta.x = -2;
+        delta.x = -PLAYER_SPEED;
     }
     if buttons & io::RIGHT != 0 && player_pos.x + 8 < WIDTH {
-        delta.x = 2;
+        delta.x = PLAYER_SPEED;
     }
     if buttons & io::UP != 0 && player_pos.y > 0 {
-        delta.y = -2;
+        delta.y = -PLAYER_SPEED;
     }
     if buttons & io::DOWN != 0 && player_pos.y + 8 < WIDTH {
-        delta.y = 2;
+        delta.y = PLAYER_SPEED;
     }
 
     delta

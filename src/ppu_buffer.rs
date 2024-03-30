@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use crate::{ppu, utils::CappedVec};
 
-const BUFFER_SIZE: usize = 6;
+const BUFFER_SIZE: usize = 20;
 
 // needs to be accessible during vblank (nmi call)
 // should be the only global variable
@@ -53,4 +53,10 @@ pub fn extend(xs: Vec<BufferDirective>) {
 
 pub fn clear() {
     buffer().clear()
+}
+
+pub fn draw_text(text: &str) {
+    for ch in text.chars() {
+        push(BufferDirective::Tile(ch as u8 - 32));
+    }
 }
