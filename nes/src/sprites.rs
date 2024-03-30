@@ -32,14 +32,17 @@ impl SpriteState {
         }
         self.index = 0;
     }
-    pub fn add(&mut self, pos: &Pos, tile: u8, attr: u8) {
-        let sprite_pos = SpritePos::from_pos(pos);
+    pub fn add(&mut self, x: u8, y: u8, tile: u8, attr: u8) {
         // attr is palette + flags
-        *ADDR.offset(self.index) = sprite_pos.0.y;
+        *ADDR.offset(self.index) = y;
         *ADDR.offset(self.index + 1) = tile;
         *ADDR.offset(self.index + 2) = attr;
-        *ADDR.offset(self.index + 3) = sprite_pos.0.x;
+        *ADDR.offset(self.index + 3) = x;
         self.index += 4;
+    }
+    pub fn add_at_pos(&mut self, pos: &Pos, tile: u8, attr: u8) {
+        let sprite_pos = SpritePos::from_pos(pos);
+        self.add(sprite_pos.0.x, sprite_pos.0.y, tile, attr)
     }
 }
 

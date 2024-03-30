@@ -1,5 +1,5 @@
 [package]
-name = "game"
+name = "brickgame"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,4 +14,3 @@ tas-compat = []
 
 [dependencies]
 nes = { path = "../nes"}
-mos-alloc = "0.2.0"

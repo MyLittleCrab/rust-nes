@@ -11,10 +11,6 @@ use nes::{
     vec2::{DPos, Orientation, Pos, Vec2},
 };
 
-// TODO:
-// separate out generic NES crate
-// add examples: heart man, rewritten brickout
-
 use crate::{
     constants::{
         AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH, WIDTH,
@@ -39,7 +35,7 @@ pub fn init(game: &mut Game) {
 pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
     game.step(apu);
 
-    sprites.add(
+    sprites.add_at_pos(
         &game.player.pos,
         if game.player.dead {
             'x' as u8 - 32
@@ -50,7 +46,7 @@ pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
     );
 
     for meanie in game.meanies.iter() {
-        sprites.add(&meanie.pos, AT_SPRITE, 0)
+        sprites.add_at_pos(&meanie.pos, AT_SPRITE, 0)
     }
 }
 
