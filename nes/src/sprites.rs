@@ -1,5 +1,5 @@
 use crate::addr::Addr;
-use crate::constants::{LEFT_MARGIN, ROW, TOP_MARGIN};
+use crate::constants::{LEFT_MARGIN, TOP_MARGIN};
 use crate::vec2::Pos;
 
 const ADDR: Addr = Addr(0x200);

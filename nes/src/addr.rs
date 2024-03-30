@@ -1,5 +1,7 @@
 use core::ops::{Deref, DerefMut};
 
+// these operations are certainly NOT safe in general
+// use with caution on known addresses
 #[derive(Copy, Clone)]
 pub struct Addr(pub u16);
 impl Addr {

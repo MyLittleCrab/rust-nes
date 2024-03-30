@@ -7,6 +7,7 @@ extern crate mos_alloc;
 
 use game::Game;
 use nes::addr::Addr;
+use nes::ppu_buffer::BufferTrait;
 use nes::sprites::SpriteState;
 use nes::{apu, io, ppu, ppu_buffer, sprites};
 use rng::Rng;
@@ -18,9 +19,13 @@ mod level;
 mod rng;
 mod utils;
 
-// fixed memory usage;
-// 0x80 - nmi check bit
-// 0x200 - OAM (reserved in linker)
+struct Buffer(ppu_buffer::Buffer<20>);
+impl ppu_buffer::BufferTrait<20> for Buffer {
+    unsafe fn buffer() -> &'static mut ppu_buffer::Buffer<20> {
+        &mut BUFFER.0
+    }
+}
+static mut BUFFER: Buffer = Buffer(ppu_buffer::Buffer::INIT);
 
 #[start]
 fn _main(_argc: isize, _argv: *const *const u8) -> isize {
@@ -53,9 +58,7 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
 pub extern "C" fn render() {
     //io::poll_controller();
     sprites::dma();
-
-    ppu_buffer::render();
-
+    Buffer::render();
     ppu::reset();
 }
 
