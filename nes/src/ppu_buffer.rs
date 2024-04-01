@@ -13,10 +13,9 @@ pub enum BufferDirective {
 
 // can't seem to query Vecs from nmi so...
 pub type Buffer<const N: usize> = CappedVec<BufferDirective, N>;
-// TODO impl iterator
 impl<const N: usize> Buffer<N> {
     pub const INIT: Self = CappedVec {
-        directives: [BufferDirective::Done; N],
+        arr: [BufferDirective::Done; N],
         len: 0,
     };
 }
@@ -28,7 +27,7 @@ pub trait BufferTrait<const N: usize> {
     const BUFFER_SIZE: usize = N;
     unsafe fn buffer() -> &'static mut Buffer<N>;
     unsafe fn render() {
-        for d in unsafe { Self::buffer() }.directives.iter() {
+        for d in unsafe { Self::buffer() } {
             match *d {
                 BufferDirective::Done => break,
                 BufferDirective::Index(a) => ppu::write_addr(a),
