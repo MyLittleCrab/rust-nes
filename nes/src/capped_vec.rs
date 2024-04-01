@@ -1,16 +1,18 @@
 use core::{
-    array,
     iter::Take,
     slice::{Iter, IterMut},
 };
 
-use alloc::vec::Vec;
-
 pub struct CappedVec<T, const N: usize> {
     pub arr: [T; N],
-    pub len: usize,
+    len: usize,
 }
 impl<T, const N: usize> CappedVec<T, N> {
+    pub const fn new(arr: [T; N]) -> Self {
+        Self {
+            arr, len: 0
+        }
+    }
     pub fn len(&self) -> usize {
         return self.len;
     }
@@ -23,11 +25,6 @@ impl<T, const N: usize> CappedVec<T, N> {
             self.len += 1;
         } else {
             panic!("Vec full")
-        }
-    }
-    pub fn extend(&mut self, xs: Vec<T>) {
-        for x in xs {
-            self.push(x)
         }
     }
 }
@@ -48,5 +45,13 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut CappedVec<T, N> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.arr.iter_mut().take(self.len)
+    }
+}
+
+impl<T, const N: usize> Extend<T> for CappedVec<T, N> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for x in iter {
+            self.push(x)
+        }
     }
 }

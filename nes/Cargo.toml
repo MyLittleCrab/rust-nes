@@ -30,4 +30,3 @@ debug = []
 tas-compat = []
 
 [dependencies]
-mos-alloc = "0.2.0"

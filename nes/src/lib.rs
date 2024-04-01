@@ -1,8 +1,5 @@
 #![no_std]
 
-extern crate alloc;
-extern crate mos_alloc;
-
 pub mod addr;
 pub mod apu;
 pub mod capped_vec;

@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use crate::{capped_vec::CappedVec, ppu};
 
 // TODO: this will take up unnecessary space
@@ -14,10 +12,7 @@ pub enum BufferDirective {
 // can't seem to query Vecs from nmi so...
 pub type Buffer<const N: usize> = CappedVec<BufferDirective, N>;
 impl<const N: usize> Buffer<N> {
-    pub const INIT: Self = CappedVec {
-        arr: [BufferDirective::Done; N],
-        len: 0,
-    };
+    pub const INIT: Self = CappedVec::new([BufferDirective::Done; N]);
 }
 
 // this is the only way I can think of to provide an interface to a static
@@ -38,7 +33,7 @@ pub trait BufferTrait<const N: usize> {
     fn push(x: BufferDirective) {
         unsafe { Self::buffer() }.push(x)
     }
-    fn extend(xs: Vec<BufferDirective>) {
+    fn extend<I: IntoIterator<Item = BufferDirective>>(xs: I) {
         unsafe { Self::buffer() }.extend(xs)
     }
     fn clear() {
