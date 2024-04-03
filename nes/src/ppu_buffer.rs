@@ -30,19 +30,22 @@ pub trait BufferTrait<const N: usize> {
             }
         }
     }
-    fn push(x: BufferDirective) {
-        unsafe { Self::buffer() }.push(x)
+    fn address(a: u16) {
+        let buffer = unsafe { Self::buffer() };
+        buffer.push(BufferDirective::Index(a));
     }
-    fn extend<I: IntoIterator<Item = BufferDirective>>(xs: I) {
-        unsafe { Self::buffer() }.extend(xs)
+    fn tile(t: u8) {
+        let buffer = unsafe { Self::buffer() };
+        buffer.push(BufferDirective::Tile(t));
+    }
+    fn tiles<I: Iterator<Item = u8>>(xs: I) {
+        unsafe { Self::buffer() }.extend(xs.map(BufferDirective::Tile))
     }
     fn clear() {
         unsafe { Self::buffer() }.clear()
     }
 
     fn draw_text(text: &str) {
-        for ch in text.chars() {
-            Self::push(BufferDirective::Tile(ch as u8 - 32));
-        }
+        Self::tiles(text.chars().map(|c| c as u8 - 32))
     }
 }

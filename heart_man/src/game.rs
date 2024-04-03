@@ -138,12 +138,12 @@ impl Game {
     }
 
     fn draw(&mut self, sprites: &mut SpriteState) {
-        Buffer::push(BufferDirective::Index(ORIGIN));
-        Buffer::extend(draw_digits(self.n_coins));
+        Buffer::address(ORIGIN);
+        draw_digits(self.n_coins);
 
         if let Some(index) = self.grabbed_coin_index {
-            Buffer::push(BufferDirective::Index(ORIGIN + index));
-            Buffer::push(BufferDirective::Tile(HEART_SPRITE));
+            Buffer::address(ORIGIN + index);
+            Buffer::tile(HEART_SPRITE);
             self.grabbed_coin_index = None;
         }
 
@@ -163,19 +163,16 @@ impl Game {
     }
 }
 
-fn draw_digits(x: u8) -> Vec<BufferDirective> {
+fn draw_digits(x: u8) {
     let mut digits = [0; 3];
     for (x, y) in digits.iter_mut().rev().zip(u8_to_decimal(x).into_iter()) {
         *x = y
     }
-    digits
-        .map(|d| BufferDirective::Tile(io::digit_to_ascii(d) - 32))
-        .into_iter()
-        .collect()
+    Buffer::tiles(digits.map(|d| io::digit_to_ascii(d) - 32).into_iter())
 }
 fn on_player_death(apu: &mut apu::APU) {
     apu.play_sfx(Sfx::Topout);
-    Buffer::push(BufferDirective::Index(ORIGIN + 15));
+    Buffer::address(ORIGIN + 15);
     Buffer::draw_text(" IS DEAD");
 }
 fn update_player(player: &mut Player, tiles: &[Tile], apu: &mut apu::APU) {
