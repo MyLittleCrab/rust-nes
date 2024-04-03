@@ -34,21 +34,9 @@ pub unsafe fn init(game: &mut Game) {
 }
 
 pub fn frame(game: &mut Game, apu: &mut apu::APU, sprites: &mut SpriteState) {
+    Buffer::clear();
     game.step(apu);
-
-    sprites.add_at_pos(
-        &game.player.pos,
-        if game.player.dead {
-            'x' as u8 - 32
-        } else {
-            HEART_SPRITE
-        },
-        0,
-    );
-
-    for meanie in game.meanies.iter() {
-        sprites.add_at_pos(&meanie.pos, AT_SPRITE, 0)
-    }
+    game.draw(sprites);
 }
 
 struct Player {
@@ -147,12 +135,9 @@ impl Game {
                 self.player.dead = true;
             }
         }
-
-        self.draw()
     }
 
-    fn draw(&mut self) {
-        Buffer::clear();
+    fn draw(&mut self, sprites: &mut SpriteState) {
         Buffer::push(BufferDirective::Index(ORIGIN));
         Buffer::extend(draw_digits(self.n_coins));
 
@@ -160,6 +145,20 @@ impl Game {
             Buffer::push(BufferDirective::Index(ORIGIN + index));
             Buffer::push(BufferDirective::Tile(HEART_SPRITE));
             self.grabbed_coin_index = None;
+        }
+
+        sprites.add_at_pos(
+            &self.player.pos,
+            if self.player.dead {
+                'x' as u8 - 32
+            } else {
+                HEART_SPRITE
+            },
+            0,
+        );
+
+        for meanie in self.meanies.iter() {
+            sprites.add_at_pos(&meanie.pos, AT_SPRITE, 0)
         }
     }
 }

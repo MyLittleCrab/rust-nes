@@ -3,23 +3,6 @@ name = "nes"
 version = "0.1.0"
 edition = "2021"
 
-[profile.dev]
-opt-level = "s"
-lto = true
-debug = true
-debug-assertions = false
-panic = "abort"
-codegen-units = 1
-overflow-checks = false
-
-[profile.release]
-opt-level = "s"
-lto = true
-debug = false
-debug-assertions = false
-panic = "abort"
-codegen-units = 1
-
 [build-dependencies]
 cc = { version = "1.0"}
 

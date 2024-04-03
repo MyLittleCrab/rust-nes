@@ -19,9 +19,10 @@ mod level;
 mod rng;
 mod utils;
 
-struct Buffer(ppu_buffer::Buffer<20>);
-impl ppu_buffer::BufferTrait<20> for Buffer {
-    unsafe fn buffer() -> &'static mut ppu_buffer::Buffer<20> {
+const BUFFER_SIZE: usize = 15;
+struct Buffer(ppu_buffer::Buffer<BUFFER_SIZE>);
+impl ppu_buffer::BufferTrait<BUFFER_SIZE> for Buffer {
+    unsafe fn buffer() -> &'static mut ppu_buffer::Buffer<BUFFER_SIZE> {
         &mut BUFFER.0
     }
 }

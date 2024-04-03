@@ -9,9 +9,7 @@ pub struct CappedVec<T, const N: usize> {
 }
 impl<T, const N: usize> CappedVec<T, N> {
     pub const fn new(arr: [T; N]) -> Self {
-        Self {
-            arr, len: 0
-        }
+        Self { arr, len: 0 }
     }
     pub fn len(&self) -> usize {
         return self.len;
