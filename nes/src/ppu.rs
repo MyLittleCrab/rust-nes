@@ -33,9 +33,13 @@ pub unsafe fn write_mask(value: u8) {
     PPU_MASK.write(value);
 }
 
+pub unsafe fn write_addr_byte(value: u8) {
+    PPU_ADDR.write(value);
+}
+
 pub unsafe fn write_addr(value: u16) {
-    PPU_ADDR.write((value >> 8) as u8);
-    PPU_ADDR.write(value as u8);
+    write_addr_byte((value >> 8) as u8);
+    write_addr_byte(value as u8);
 }
 
 pub unsafe fn write_data(value: u8) {

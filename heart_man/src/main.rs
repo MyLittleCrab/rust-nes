@@ -19,7 +19,7 @@ mod level;
 mod rng;
 mod utils;
 
-const BUFFER_SIZE: usize = 15;
+const BUFFER_SIZE: usize = 20;
 struct Buffer(ppu_buffer::Buffer<BUFFER_SIZE>);
 impl ppu_buffer::BufferTrait<BUFFER_SIZE> for Buffer {
     unsafe fn buffer() -> &'static mut ppu_buffer::Buffer<BUFFER_SIZE> {
@@ -57,8 +57,6 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
 // in particular, NMI does not play nicely with the heap
 // we can read the length of Vecs but not their contents(?)
 // likely takes too long
-// we are very close to the number of cycles that can fit in
-// the vblank
 #[no_mangle]
 pub extern "C" fn render() {
     //io::poll_controller();

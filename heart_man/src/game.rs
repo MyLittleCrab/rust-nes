@@ -3,9 +3,10 @@ use core::{mem::transmute, ptr::addr_of_mut};
 use alloc::vec;
 use alloc::vec::Vec;
 use nes::{
+    addr::Addr,
     apu::{self, Sfx},
     io, ppu,
-    ppu_buffer::{self, BufferDirective, BufferTrait},
+    ppu_buffer::{self, BufferTrait},
     sprites::SpriteState,
     utils::Sign,
     vec2::{DPos, Orientation, Pos, Vec2},
@@ -138,12 +139,10 @@ impl Game {
     }
 
     fn draw(&mut self, sprites: &mut SpriteState) {
-        Buffer::address(ORIGIN);
-        draw_digits(self.n_coins);
+        draw_digits(Addr(ORIGIN), self.n_coins);
 
         if let Some(index) = self.grabbed_coin_index {
-            Buffer::address(ORIGIN + index);
-            Buffer::tile(HEART_SPRITE);
+            Buffer::tile(Addr(ORIGIN + index), HEART_SPRITE);
             self.grabbed_coin_index = None;
         }
 
@@ -163,17 +162,16 @@ impl Game {
     }
 }
 
-fn draw_digits(x: u8) {
+fn draw_digits(addr: Addr, x: u8) {
     let mut digits = [0; 3];
     for (x, y) in digits.iter_mut().rev().zip(u8_to_decimal(x).into_iter()) {
         *x = y
     }
-    Buffer::tiles(digits.map(|d| io::digit_to_ascii(d) - 32).into_iter())
+    Buffer::tiles(addr, digits.map(|d| io::digit_to_ascii(d) - 32).into_iter())
 }
 fn on_player_death(apu: &mut apu::APU) {
     apu.play_sfx(Sfx::Topout);
-    Buffer::address(ORIGIN + 15);
-    Buffer::draw_text(" IS DEAD");
+    Buffer::draw_text(Addr(ORIGIN + 15), " IS DEAD");
 }
 fn update_player(player: &mut Player, tiles: &[Tile], apu: &mut apu::APU) {
     if player.dead {
