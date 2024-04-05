@@ -3,12 +3,10 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use alloc::vec::Vec;
+use nes::capped_vec::CappedVec;
 
-// this could just return a [u3 ; 3] but i wanted a demo of
-// Vecs working properly
-pub fn u8_to_decimal(b: u8) -> Vec<u8> {
-    let mut digits = Vec::with_capacity(3);
+pub fn u8_to_decimal(b: u8) -> CappedVec<u8, 3> {
+    let mut digits = CappedVec::new();
     let mut a = b;
     loop {
         digits.push(a % 10);

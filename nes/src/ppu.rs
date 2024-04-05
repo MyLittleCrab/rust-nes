@@ -4,6 +4,7 @@ const CTRL_VRAM_INC: u8 = 0b100;
 const _CTRL_NMI: u8 = 0b10000000;
 const PPU_CTRL: Addr = Addr(0x2000);
 const PPU_MASK: Addr = Addr(0x2001);
+#[allow(dead_code)]
 const PPU_STATUS: Addr = Addr(0x2002);
 const PPU_SCROLL: Addr = Addr(0x2005);
 const PPU_ADDR: Addr = Addr(0x2006);

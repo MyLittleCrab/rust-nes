@@ -10,11 +10,8 @@ enum State {
     DrawTile(u8),
 }
 
-// can't seem to query Vecs from nmi so...
+// can't seem to query mos alloc Vecs from nmi so...
 pub type Buffer<const N: usize> = CappedVec<u8, N>;
-impl<const N: usize> Buffer<N> {
-    pub const INIT: Self = CappedVec::new([0; N]);
-}
 
 // this is the only way I can think of to provide an interface to a static
 // mutable buffer. Implementers define the buffer and provide a ref to it
@@ -75,11 +72,13 @@ pub trait BufferTrait<const N: usize> {
         }
 
         // write number of tiles
-        buffer.arr[start_index] = n_tiles;
+        buffer.write(start_index, n_tiles);
     }
+
     fn tile(addr: Addr, x: u8) {
         Self::tiles(addr, iter::once(x))
     }
+
     fn clear() {
         unsafe { Self::buffer() }.clear()
     }

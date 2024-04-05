@@ -2,9 +2,6 @@
 #![feature(start)]
 #![allow(unused_imports, dead_code)]
 
-extern crate alloc;
-extern crate mos_alloc;
-
 use game::Game;
 use nes::addr::Addr;
 use nes::ppu_buffer::BufferTrait;
@@ -26,7 +23,7 @@ impl ppu_buffer::BufferTrait<BUFFER_SIZE> for Buffer {
         &mut BUFFER.0
     }
 }
-static mut BUFFER: Buffer = Buffer(ppu_buffer::Buffer::INIT);
+static mut BUFFER: Buffer = Buffer(ppu_buffer::Buffer::new());
 
 #[start]
 fn _main(_argc: isize, _argv: *const *const u8) -> isize {

@@ -1,10 +1,9 @@
 use core::{mem::transmute, ptr::addr_of_mut};
 
-use alloc::vec;
-use alloc::vec::Vec;
 use nes::{
     addr::Addr,
     apu::{self, Sfx},
+    capped_vec::CappedVec,
     io, ppu,
     ppu_buffer::{self, BufferTrait},
     sprites::SpriteState,
@@ -60,7 +59,7 @@ pub struct Game {
     tiles: [Tile; GRID_SIZE as usize],
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
-    meanies: Vec<Meanie>,
+    meanies: CappedVec<Meanie, 4>,
 }
 
 impl Game {
@@ -74,7 +73,7 @@ impl Game {
             tiles: [Tile::Nothing; GRID_SIZE as usize],
             grabbed_coin_index: None,
             n_coins: 0,
-            meanies: vec![
+            meanies: [
                 Meanie {
                     pos: Pos {
                         x: WIDTH / 2 + 16,
@@ -102,7 +101,9 @@ impl Game {
                     orientation: Orientation::Widdershins,
                     n_turns: 0,
                 },
-            ],
+            ]
+            .into_iter()
+            .collect(),
         });
         let game = some_game.as_mut().unwrap();
         make_level(&mut game.tiles, &mut game.rng);
@@ -156,7 +157,7 @@ impl Game {
             0,
         );
 
-        for meanie in self.meanies.iter() {
+        for meanie in &self.meanies {
             sprites.add_at_pos(&meanie.pos, AT_SPRITE, 0)
         }
     }
