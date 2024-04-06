@@ -63,13 +63,24 @@ pub struct Game {
     grabbed_coins: CappedVec<u16, 30>,
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
-    meanies: CappedVec<Meanie, 4>,
+    meanies: CappedVec<Meanie, 6>,
+}
+
+fn make_meanie(rng: &mut Rng) -> Meanie {
+    rng.cycle();
+    Meanie {
+        pos: random_pos_on_tile(rng, &LEVEL_TILES, Tile::Nothing, PLAYER_WIDTH),
+        vel: random_cardinal_dir(rng),
+        orientation: random_orientation(rng),
+        n_turns: 0,
+    }
 }
 
 impl Game {
     pub fn new(some_game: &mut Option<Game>) {
+        let mut rng = Rng::new(None);
         *some_game = Some(Self {
-            rng: Rng::new(None),
+            rng: rng.clone(),
             player: Player {
                 pos: Pos { x: 16, y: 0 },
                 dead: false,
@@ -77,37 +88,8 @@ impl Game {
             grabbed_coins: CappedVec::new(),
             grabbed_coin_index: None,
             n_coins: 0,
-            meanies: [
-                Meanie {
-                    pos: Pos {
-                        x: WIDTH / 2 + 16,
-                        y: HEIGHT - 20,
-                    },
-                    vel: DPos::new(-1, 0),
-                    orientation: Orientation::Widdershins,
-                    n_turns: 0,
-                },
-                Meanie {
-                    pos: Pos {
-                        x: WIDTH / 3,
-                        y: HEIGHT - 12,
-                    },
-                    vel: DPos::new(1, 0),
-                    orientation: Orientation::Clockwise,
-                    n_turns: 0,
-                },
-                Meanie {
-                    pos: Pos {
-                        x: WIDTH / 3,
-                        y: HEIGHT / 2 - 16,
-                    },
-                    vel: DPos::new(0, -1),
-                    orientation: Orientation::Widdershins,
-                    n_turns: 0,
-                },
-            ]
-            .into_iter()
-            .collect(),
+            // more than 4 causes issues unless optimized for speed
+            meanies: (0..4).map(|_| make_meanie(&mut rng)).into_iter().collect(),
         });
         let game = some_game.as_mut().unwrap();
         make_level(&SEEDS);
@@ -136,7 +118,7 @@ impl Game {
         }
 
         for meanie in self.meanies.iter_mut() {
-            update_meanie(&LEVEL_TILES, meanie);
+            update_meanie(&LEVEL_TILES, meanie, &mut self.rng);
             if !self.player.dead && (self.player.pos.l1_dist(&meanie.pos) < PLAYER_WIDTH) {
                 on_player_death(apu);
                 self.player.dead = true;
@@ -166,6 +148,59 @@ impl Game {
             sprites.add_at_pos(&meanie.pos, AT_SPRITE, 0)
         }
     }
+}
+
+fn random_pos(rng: &mut Rng) -> Pos {
+    Pos {
+        x: { rng.next() % WIDTH },
+        y: { rng.next() % HEIGHT },
+    }
+}
+
+fn random_sign(rng: &mut Rng) -> Sign {
+    match rng.next() % 2 {
+        0 => Sign::Minus,
+        1 => Sign::Plus,
+        _ => unreachable!(),
+    }
+}
+
+fn random_orientation(rng: &mut Rng) -> Orientation {
+    match rng.next() % 2 {
+        0 => Orientation::Clockwise,
+        1 => Orientation::Widdershins,
+        _ => unreachable!(),
+    }
+}
+
+fn random_dir(rng: &mut Rng) -> DPos {
+    DPos {
+        x: random_sign(rng).to_i8(),
+        y: random_sign(rng).to_i8(),
+    }
+}
+fn random_cardinal_dir(rng: &mut Rng) -> DPos {
+    match rng.next() % 4 {
+        0 => DPos::x_unit(),
+        1 => DPos::y_unit(),
+        2 => DPos::x_unit().scaled(-1),
+        3 => DPos::y_unit().scaled(-1),
+        _ => unreachable!(),
+    }
+}
+
+fn random_pos_on_tile(rng: &mut Rng, tiles: &[Tile], target_tile: Tile, width: u8) -> Pos {
+    let mut pos: Pos;
+    loop {
+        pos = random_pos(rng);
+        if (get_tile_at(tiles, &pos) == target_tile)
+            & (get_tile_at(tiles, &pos.shifted(&DPos::new(width as i8, width as i8)))
+                == target_tile)
+        {
+            break;
+        }
+    }
+    pos
 }
 
 fn draw_digits(addr: Addr, x: u8) {
@@ -262,16 +297,22 @@ fn check_box_collision(
     collision
 }
 
-fn update_meanie(tiles: &[Tile], meanie: &mut Meanie) {
+fn update_meanie(tiles: &[Tile], meanie: &mut Meanie, rng: &mut Rng) {
     let mut delta = DPos::zero();
     for _ in 0..3 {
         // stop trying after 3 attempts in case we're stuck
-        delta = meanie.vel.scaled(DT as i8);
-        let collision =
-            check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);
-        if let Vec2 { x: None, y: None } = collision {
-            break;
+        const SPEED: u8 = 1;
+        delta = meanie.vel.scaled((SPEED * DT) as i8);
+        // need to check if we're going off the top of the screen
+        let going_offscreen = (delta.y < 0) & (meanie.pos.y < SPEED * DT);
+        if !going_offscreen {
+            let collision =
+                check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);
+            if let Vec2 { x: None, y: None } = collision {
+                break;
+            }
         }
+
         delta = delta.rotate(meanie.orientation);
         meanie.vel = delta;
         meanie.n_turns += 1;
@@ -279,8 +320,8 @@ fn update_meanie(tiles: &[Tile], meanie: &mut Meanie) {
 
     meanie.pos.inc(&delta);
 
-    if meanie.n_turns > 50 {
-        meanie.orientation = meanie.orientation.reverse();
+    if meanie.n_turns > 5 {
+        meanie.orientation = random_orientation(rng);
         meanie.n_turns = 0
     }
 }

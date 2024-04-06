@@ -1,15 +1,20 @@
 pub const INIT_SEED: u16 = next_seed(0x8988); // holds a special place in my heart
 
+#[derive(Clone)]
 pub struct Rng(u16);
 impl Rng {
     pub fn new(seed: Option<u16>) -> Self {
         Self(seed.unwrap_or(INIT_SEED))
     }
-    pub fn cycle(&mut self) {
-        self.0 = next_seed(self.0)
+    pub fn cycle(&mut self) -> &mut Self {
+        self.0 = next_seed(self.0);
+        self
     }
     pub fn get(&mut self) -> u8 {
         seed_to_rng(self.0)
+    }
+    pub fn next(&mut self) -> u8 {
+        self.cycle().get()
     }
 }
 

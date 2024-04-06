@@ -53,6 +53,12 @@ impl DPos {
     pub fn zero() -> Self {
         Self { x: 0, y: 0 }
     }
+    pub fn x_unit() -> Self {
+        Self { x: 1, y: 0 }
+    }
+    pub fn y_unit() -> Self {
+        Self { x: 0, y: 1 }
+    }
     pub fn x_vec(&self) -> Self {
         Self { x: self.x, y: 0 }
     }

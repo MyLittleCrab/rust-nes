@@ -119,8 +119,8 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
     io::wait_for_vblank();
     apu::silence_all();
     unsafe { ppu::disable_nmi() };
-    //let mut writer = PPUWriter::new(Addr(ORIGIN));
-    let mut writer = MemoryWriter::new(Addr(0xe0));
+    let mut writer = PPUWriter::new(Addr(ORIGIN));
+    //let mut writer = MemoryWriter::new(Addr(0xe0));
     //writeln!(writer, "{}", panic_info).ok();
     if let Some(location) = panic_info.location() {
         write!(writer, "Panic in {} on line ", location.file()).ok();
