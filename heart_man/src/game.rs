@@ -28,8 +28,9 @@ const LEVEL_TILES: [Tile; GRID_SIZE as usize] = make_level(&SEEDS);
 // called before enabling nmi
 pub unsafe fn init() {
     // palettes
-    ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
-    ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);
+    ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x29, 0x12, 0x19]);
+    ppu::write_bytes(ppu::PAL_SPRITE_0 + 1, &[0x0, 0x0, 0x15]);
+    ppu::write_bytes(ppu::PAL_SPRITE_1 + 1, &[0x0, 0x0, 0x21]);
 
     draw_level(&LEVEL_TILES);
 
@@ -145,7 +146,7 @@ impl Game {
         );
 
         for meanie in &self.meanies {
-            sprites.add_at_pos(&meanie.pos, AT_SPRITE, 0)
+            sprites.add_at_pos(&meanie.pos, AT_SPRITE, 1)
         }
     }
 }
