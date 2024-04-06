@@ -16,18 +16,22 @@ use crate::{
         AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH, WIDTH,
     },
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
-    rng::Rng,
+    rng::{get_seeds, Rng},
     utils::u8_to_decimal,
     Buffer,
 };
 
+// TODO: store only seeds
+const SEEDS: [u16; GRID_SIZE as usize] = get_seeds();
+const LEVEL_TILES: [Tile; GRID_SIZE as usize] = make_level(&SEEDS);
+
 // called before enabling nmi
-pub unsafe fn init(game: &mut Game) {
+pub unsafe fn init() {
     // palettes
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0E, 0x30, 0x12, 0x26]);
     ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x15]);
 
-    draw_level(&mut game.tiles);
+    draw_level(&LEVEL_TILES);
 
     // text
     ppu::draw_ascii(ORIGIN + 0x06, "HEART-MAN");
@@ -56,7 +60,7 @@ type Collision = Vec2<Option<Sign>>;
 pub struct Game {
     rng: Rng,
     player: Player,
-    tiles: [Tile; GRID_SIZE as usize],
+    grabbed_coins: CappedVec<u16, 30>,
     grabbed_coin_index: Option<u16>,
     n_coins: u8,
     meanies: CappedVec<Meanie, 4>,
@@ -70,7 +74,7 @@ impl Game {
                 pos: Pos { x: 16, y: 0 },
                 dead: false,
             },
-            tiles: [Tile::Nothing; GRID_SIZE as usize],
+            grabbed_coins: CappedVec::new(),
             grabbed_coin_index: None,
             n_coins: 0,
             meanies: [
@@ -106,10 +110,9 @@ impl Game {
             .collect(),
         });
         let game = some_game.as_mut().unwrap();
-        make_level(&mut game.tiles, &mut game.rng);
+        make_level(&SEEDS);
 
-        game.n_coins = game
-            .tiles
+        game.n_coins = LEVEL_TILES
             .iter()
             .map(|t| match t {
                 Tile::Coin => 1,
@@ -119,19 +122,21 @@ impl Game {
     }
 
     fn step(&mut self, apu: &mut apu::APU) {
-        update_player(&mut self.player, &self.tiles, apu);
+        update_player(&mut self.player, &LEVEL_TILES, apu);
 
         let player_center = self.player.pos.shifted(&DPos::new(4, 4));
-        if let Tile::Coin = get_tile_at(&self.tiles, &player_center) {
+        if let Tile::Coin = get_tile_at(&LEVEL_TILES, &player_center) {
             let index = map_pos_to_tile_index(&player_center);
-            self.tiles[index as usize] = Tile::Nothing;
-            self.grabbed_coin_index = Some(index);
-            self.n_coins -= 1;
-            apu.play_sfx(Sfx::LevelUp);
+            if !self.grabbed_coins.iter().any(|i| *i == index) {
+                self.grabbed_coins.try_push(index).expect("Pockets full!");
+                self.grabbed_coin_index = Some(index);
+                self.n_coins -= 1;
+                apu.play_sfx(Sfx::LevelUp);
+            }
         }
 
         for meanie in self.meanies.iter_mut() {
-            update_meanie(&self.tiles, meanie);
+            update_meanie(&LEVEL_TILES, meanie);
             if !self.player.dead && (self.player.pos.l1_dist(&meanie.pos) < PLAYER_WIDTH) {
                 on_player_death(apu);
                 self.player.dead = true;

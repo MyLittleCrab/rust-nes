@@ -1,9 +1,9 @@
 use nes::{constants::ROW, vec2::Pos};
 
 use crate::{
-    constants::{COIN_SPRITE, N_ROWS, ORIGIN, WALL_SPRITE},
+    constants::{COIN_SPRITE, GRID_SIZE, N_ROWS, ORIGIN, WALL_SPRITE},
     ppu,
-    rng::Rng,
+    rng::{get_seeds, seed_to_rng, Rng},
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -16,33 +16,45 @@ pub enum Tile {
 // const TEST: &[Tile] = unsafe{
 //     transmute::<&[u8], &[Tile]>(include_bytes!("test_level.dat"))
 // };
-
-pub fn make_level<const N: usize>(tiles: &mut [Tile; N], rng: &mut Rng) {
-    for t in tiles.iter_mut() {
-        rng.cycle();
-        if rng.get() % 4 == 0 {
-            *t = Tile::Wall;
-        } else if rng.get() % 41 == 1 {
-            *t = Tile::Coin;
-        }
+//
+pub const fn seed_to_tile(seed: u16) -> Tile {
+    let rng_val = seed_to_rng(seed);
+    if rng_val % 4 == 0 {
+        Tile::Wall
+    } else if rng_val % 41 == 1 {
+        Tile::Coin
+    } else {
+        Tile::Nothing
     }
-
-    for i in 0..ROW {
-        tiles[i as usize] = Tile::Wall;
-    }
-    for i in 0..(N_ROWS as u16) {
-        tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
-        tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
-    }
-    for i in 0..ROW {
-        tiles[(ROW as usize) * (N_ROWS as usize - 2) + i as usize] = Tile::Wall;
-    }
-    // for (t, target) in tiles.iter_mut().zip(TEST) {
-    //     *t = *target;
-    // }
 }
 
-pub unsafe fn draw_level<const N: usize>(tiles: &mut [Tile; N]) {
+pub const fn make_level<const N: usize>(seeds: &[u16; N]) -> [Tile; N] {
+    let mut tiles = [Tile::Nothing; N];
+    let mut i = 0;
+    while i < N {
+        tiles[i] = seed_to_tile(seeds[i]);
+        i += 1;
+    }
+    i = 0;
+    while i < ROW as usize {
+        tiles[i] = Tile::Wall;
+        i += 1;
+    }
+    i = 0;
+    while i < (N_ROWS as usize) {
+        tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
+        tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
+        i += 1;
+    }
+    i = 0;
+    while i < ROW as usize {
+        tiles[(ROW as usize) * (N_ROWS as usize - 2) + i as usize] = Tile::Wall;
+        i += 1;
+    }
+    tiles
+}
+
+pub unsafe fn draw_level<const N: usize>(tiles: &[Tile; N]) {
     // draw level tiles
     ppu::write_addr(ORIGIN);
 

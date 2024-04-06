@@ -38,7 +38,7 @@ fn _main(_argc: isize, _argv: *const *const u8) -> isize {
     Game::new(&mut game);
 
     unsafe {
-        game::init(game.as_mut().unwrap());
+        game::init();
     }
 
     unsafe {

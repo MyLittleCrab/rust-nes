@@ -22,13 +22,17 @@ impl<T, const N: usize> CappedVec<T, N> {
     pub fn clear(&mut self) {
         self.len = 0;
     }
-    pub fn push(&mut self, x: T) {
+    pub fn try_push(&mut self, x: T) -> Result<(), ()> {
         if self.len < N {
             self.arr[self.len].write(x);
             self.len += 1;
+            Ok(())
         } else {
-            panic!("Vec full")
+            Err(())
         }
+    }
+    pub fn push(&mut self, x: T) {
+        self.try_push(x).expect("Vec full!")
     }
     // TODO: this is untested
     pub fn pop(&mut self) -> Option<T> {
