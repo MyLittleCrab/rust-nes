@@ -2,12 +2,16 @@
 #![feature(start)]
 #![allow(unused_imports, dead_code)]
 
+use core::fmt::Write;
+
+use constants::ORIGIN;
 use game::Game;
 use nes::addr::Addr;
 use nes::ppu_buffer::BufferTrait;
 use nes::sprites::SpriteState;
 use nes::{apu, io, ppu, ppu_buffer, sprites};
 use rng::Rng;
+use utils::u8_to_decimal;
 
 mod constants;
 mod game;
@@ -68,21 +72,82 @@ pub extern "C" fn render() {
 #[no_mangle]
 pub static TILES: [u8; 4096] = *include_bytes!("./chr/tiles.chr");
 
+struct PPUWriter {
+    start: Addr,
+    started: bool,
+}
+impl PPUWriter {
+    fn new(start: Addr) -> Self {
+        Self {
+            start,
+            started: false,
+        }
+    }
+}
+impl Write for PPUWriter {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        if self.started {
+            unsafe { ppu::draw_text(s) }
+        } else {
+            unsafe { ppu::draw_ascii(self.start.addr(), s) }
+            self.started = true;
+        }
+        Ok(())
+    }
+}
+struct MemoryWriter {
+    start: Addr,
+    current: Addr,
+}
+impl MemoryWriter {
+    fn new(start: Addr) -> Self {
+        Self {
+            start,
+            current: start,
+        }
+    }
+}
+impl Write for MemoryWriter {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        print_to_memory(s, &mut self.current);
+        Ok(())
+    }
+}
+
 #[panic_handler]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
-    let p = &mut Addr(0xE0);
+    io::wait_for_vblank();
+    apu::silence_all();
+    unsafe { ppu::disable_nmi() };
+    //let mut writer = PPUWriter::new(Addr(ORIGIN));
+    let mut writer = MemoryWriter::new(Addr(0xe0));
+    //writeln!(writer, "{}", panic_info).ok();
     if let Some(location) = panic_info.location() {
-        print_error(location.file(), p);
-        print_error(" line: ", p);
-        unsafe { p.write(location.line() as u8) }
+        write!(writer, "Panic in {} on line ", location.file()).ok();
+        draw_digits(location.line() as u8);
     } else {
-        print_error("No location", p)
+        unsafe {
+            ppu::draw_ascii(ORIGIN, "; no location");
+        }
     };
 
+    unsafe { ppu::enable_nmi() }
     loop {}
 }
 
-fn print_error(s: &str, p: &mut Addr) {
+fn draw_digits(x: u8) {
+    for d in u8_to_decimal(x)
+        .into_iter()
+        .rev()
+        .map(|d| io::digit_to_ascii(d) - 32)
+    {
+        unsafe {
+            ppu::write_data(d);
+        }
+    }
+}
+
+fn print_to_memory(s: &str, p: &mut Addr) {
     for ch in s.chars() {
         unsafe {
             p.write(ch as u8);

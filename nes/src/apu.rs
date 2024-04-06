@@ -64,6 +64,11 @@ fn sfx_end(c: Channel) -> bool {
     false
 }
 
+pub fn silence_all() {
+    sfx_end(Channel::Pulse1);
+    sfx_end(Channel::Pulse2);
+}
+
 #[allow(dead_code)]
 fn noise_frame(tp: u8, vol: u8) -> bool {
     unsafe {
