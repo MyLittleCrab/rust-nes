@@ -13,11 +13,12 @@ use nes::{
 
 use crate::{
     constants::{
-        AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH, WIDTH,
+        AT_SPRITE, DT, GRID_SIZE, HEART_SPRITE, HEIGHT, ORIGIN, PLAYER_SPEED, PLAYER_WIDTH,
+        WALL_SPRITE, WIDTH,
     },
     level::{draw_level, get_tile_at, make_level, map_pos_to_tile_index, Tile},
     rng::{get_seeds, Rng},
-    utils::u8_to_decimal,
+    utils::{u16_to_decimal, u8_to_decimal},
     Buffer,
 };
 
@@ -83,7 +84,10 @@ impl Game {
         *some_game = Some(Self {
             rng: rng.clone(),
             player: Player {
-                pos: Pos { x: 16, y: 0 },
+                pos: Pos {
+                    x: 16 + 8,
+                    y: 8 + 8,
+                },
                 dead: false,
             },
             grabbed_coins: CappedVec::new(),
@@ -105,7 +109,7 @@ impl Game {
     }
 
     fn step(&mut self, apu: &mut apu::APU) {
-        update_player(&mut self.player, &LEVEL_TILES, apu);
+        update_player(&mut self.player, &LEVEL_TILES);
 
         let player_center = self.player.pos.shifted(&DPos::new(4, 4));
         if let Tile::Coin = get_tile_at(&LEVEL_TILES, &player_center) {
@@ -134,6 +138,14 @@ impl Game {
             Buffer::tile(Addr(ORIGIN + index), HEART_SPRITE);
             self.grabbed_coin_index = None;
         }
+
+        // let index = map_pos_to_tile_index(&self.player.pos);
+        // if (index as usize) < LEVEL_TILES.len() {
+        //     Buffer::tile(Addr(ORIGIN + index), HEART_SPRITE);
+        // }
+        // draw_digits_16(Addr(ORIGIN), index);
+        // draw_digits(Addr(ORIGIN).offset(6), self.player.pos.x);
+        //draw_digits(Addr(ORIGIN).offset(6 + 4), self.player.pos.y);
 
         sprites.add_at_pos(
             &self.player.pos,
@@ -211,15 +223,24 @@ fn draw_digits(addr: Addr, x: u8) {
     }
     Buffer::tiles(addr, digits.map(|d| io::digit_to_ascii(d) - 32).into_iter())
 }
+
+fn draw_digits_16(addr: Addr, x: u16) {
+    let mut digits = [0; 5];
+    for (x, y) in digits.iter_mut().rev().zip(u16_to_decimal(x).into_iter()) {
+        *x = y
+    }
+    Buffer::tiles(addr, digits.map(|d| io::digit_to_ascii(d) - 32).into_iter())
+}
+
 fn on_player_death(apu: &mut apu::APU) {
     apu.play_sfx(Sfx::Topout);
     Buffer::draw_text(Addr(ORIGIN + 15), " IS DEAD");
 }
-fn update_player(player: &mut Player, tiles: &[Tile], apu: &mut apu::APU) {
+fn update_player(player: &mut Player, tiles: &[Tile]) {
     if player.dead {
         return;
     }
-    let mut player_delta = player_movement_delta(io::controller_buttons(), &player.pos);
+    let mut player_delta = player_movement_delta();
 
     let collision = check_box_collision(
         &tiles,
@@ -230,33 +251,27 @@ fn update_player(player: &mut Player, tiles: &[Tile], apu: &mut apu::APU) {
     );
     if let Some(_) = collision.x {
         player_delta.x = 0;
-        if !apu.is_playing() {
-            apu.play_sfx(Sfx::Lock);
-        }
     }
     if let Some(_) = collision.y {
         player_delta.y = 0;
-        if !apu.is_playing() {
-            apu.play_sfx(Sfx::Lock);
-        }
     }
 
     player.pos.inc(&player_delta);
 }
 
-fn player_movement_delta(buttons: u8, player_pos: &Pos) -> DPos {
+fn player_movement_delta() -> DPos {
     let mut delta = DPos::zero();
 
-    if buttons & io::LEFT != 0 && player_pos.x > 0 {
+    if io::is_pressed(io::Button::Left) {
         delta.x = -PLAYER_SPEED;
     }
-    if buttons & io::RIGHT != 0 && player_pos.x + 8 < WIDTH {
+    if io::is_pressed(io::Button::Right) {
         delta.x = PLAYER_SPEED;
     }
-    if buttons & io::UP != 0 && player_pos.y > 0 {
+    if io::is_pressed(io::Button::Up) {
         delta.y = -PLAYER_SPEED;
     }
-    if buttons & io::DOWN != 0 && player_pos.y + 8 < WIDTH {
+    if io::is_pressed(io::Button::Down) {
         delta.y = PLAYER_SPEED;
     }
 
@@ -299,23 +314,21 @@ fn check_box_collision(
 }
 
 fn update_meanie(tiles: &[Tile], meanie: &mut Meanie, rng: &mut Rng) {
-    let mut delta = DPos::zero();
+    const SPEED: u8 = 1;
+
+    let mut delta = Vec2::zero();
+
+    // stop trying after 3 attempts in case we're stuck
     for _ in 0..3 {
-        // stop trying after 3 attempts in case we're stuck
-        const SPEED: u8 = 1;
         delta = meanie.vel.scaled((SPEED * DT) as i8);
-        // need to check if we're going off the top of the screen
-        let going_offscreen = (delta.y < 0) & (meanie.pos.y < SPEED * DT);
-        if !going_offscreen {
-            let collision =
-                check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);
-            if let Vec2 { x: None, y: None } = collision {
-                break;
-            }
+
+        let collision =
+            check_box_collision(tiles, Tile::Wall, PLAYER_WIDTH as i8, &meanie.pos, &delta);
+        if let Vec2 { x: None, y: None } = collision {
+            break;
         }
 
-        delta = delta.rotate(meanie.orientation);
-        meanie.vel = delta;
+        meanie.vel = meanie.vel.rotate(meanie.orientation);
         meanie.n_turns += 1;
     }
 

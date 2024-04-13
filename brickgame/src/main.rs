@@ -4,6 +4,7 @@
 
 use nes::{apu, io, ppu, sprites};
 
+mod draw;
 mod game;
 
 // fixed memory usage;

@@ -3,6 +3,8 @@ use nes::{
     sprites::{self, SpriteState},
 };
 
+use crate::draw::draw_box;
+
 // statically allocated memory
 static mut STATE: Option<Game> = None;
 static mut SEED: u16 = 0x8988;
@@ -20,7 +22,7 @@ pub unsafe fn init() {
     // palettes and border
     ppu::write_bytes(ppu::PAL_BG_0, &[0x0D, 0x36, 0x16, 0x23]);
     ppu::write_bytes(ppu::PAL_SPRITE_0 + 3, &[0x30]);
-    ppu::draw_box(1, 1, 30, 28);
+    draw_box(1, 1, 30, 28);
 
     // bricks
     let mut addr = 0x2082;

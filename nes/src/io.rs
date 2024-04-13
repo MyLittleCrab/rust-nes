@@ -4,6 +4,18 @@ extern "C" {
     fn wait_vblank();
 }
 
+#[derive(Copy, Clone)]
+pub enum Button {
+    Right,
+    Left,
+    Down,
+    Up,
+    Start,
+    Select,
+    B,
+    A,
+}
+
 pub fn wait_for_vblank() {
     unsafe { wait_vblank() };
     // Addr(0x80).write(0);
@@ -27,6 +39,19 @@ pub const SELECT: u8 = 0x20;
 pub const B: u8 = 0x40;
 pub const A: u8 = 0x80;
 
+const fn button_code(button: Button) -> u8 {
+    match button {
+        Button::Right => RIGHT,
+        Button::Left => LEFT,
+        Button::Down => DOWN,
+        Button::Up => UP,
+        Button::Start => START,
+        Button::Select => SELECT,
+        Button::B => B,
+        Button::A => A,
+    }
+}
+
 static JOYPAD1: Addr = Addr(0x4016);
 static mut BUTTONS: u8 = 0;
 
@@ -47,6 +72,10 @@ pub fn poll_controller() {
 
 pub fn controller_buttons() -> u8 {
     unsafe { BUTTONS }
+}
+
+pub fn is_pressed(button: Button) -> bool {
+    controller_buttons() & button_code(button) != 0
 }
 
 pub fn byte_to_digits(b: u8) -> [u8; 2] {

@@ -3,7 +3,7 @@
 members = [
     "nes",
     "heart_man",
-    # "brickgame",
+    "brickgame",
 ]
 
 [profile.dev]

@@ -1,21 +1,9 @@
 use crate::addr::Addr;
-use crate::constants::{LEFT_MARGIN, TOP_MARGIN};
 use crate::vec2::Pos;
 
 const ADDR: Addr = Addr(0x200);
 const OAM_DMA: Addr = Addr(0x4014);
 const OAM_ADDR: Addr = Addr(0x2003);
-
-struct SpritePos(Pos);
-
-impl SpritePos {
-    pub fn from_pos(pos: &Pos) -> SpritePos {
-        SpritePos(Pos {
-            x: TOP_MARGIN + pos.x,
-            y: LEFT_MARGIN + pos.y - 1,
-        })
-    }
-}
 
 pub struct SpriteState {
     index: isize,
@@ -41,8 +29,7 @@ impl SpriteState {
         self.index += 4;
     }
     pub fn add_at_pos(&mut self, pos: &Pos, tile: u8, attr: u8) {
-        let sprite_pos = SpritePos::from_pos(pos);
-        self.add(sprite_pos.0.x, sprite_pos.0.y, tile, attr)
+        self.add(pos.x, pos.y, tile, attr)
     }
 }
 

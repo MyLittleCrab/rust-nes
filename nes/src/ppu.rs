@@ -1,6 +1,5 @@
 use crate::addr::Addr;
 
-const CTRL_VRAM_INC: u8 = 0b100;
 const _CTRL_NMI: u8 = 0b10000000;
 const PPU_CTRL: Addr = Addr(0x2000);
 const PPU_MASK: Addr = Addr(0x2001);
@@ -81,38 +80,6 @@ pub unsafe fn draw_ascii(off: u16, ascii: &str) {
     for (i, line) in ascii.split("\n").enumerate() {
         write_addr(off + (0x20 * i as u16));
         draw_text(line);
-    }
-}
-
-#[inline(never)]
-pub unsafe fn draw_box(x: u8, y: u8, w: u8, h: u8) {
-    const BOX_TILES: u8 = 0x73;
-    let offset = 0x2000 + (x as u16 + (y as u16 * 0x20));
-    // -
-    write_addr(offset);
-    write_data(BOX_TILES);
-    for _ in 0..w - 2 {
-        write_data(BOX_TILES + 5);
-    }
-    write_data(BOX_TILES + 1);
-    // |
-    write_addr(offset + 0x20);
-    or_ctrl(CTRL_VRAM_INC);
-    for _ in 0..h - 2 {
-        write_data(BOX_TILES + 4);
-    }
-    write_data(BOX_TILES + 2);
-    // |
-    write_addr(offset + 0x20 + w as u16 - 1);
-    for _ in 0..h - 2 {
-        write_data(BOX_TILES + 4);
-    }
-    write_data(BOX_TILES + 3);
-    and_ctrl(!CTRL_VRAM_INC);
-    // _
-    write_addr(offset + ((h as u16 - 1) * 0x20) + 1);
-    for _ in 0..w - 2 {
-        write_data(BOX_TILES + 5);
     }
 }
 

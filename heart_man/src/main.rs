@@ -7,6 +7,7 @@ use core::fmt::Write;
 use constants::ORIGIN;
 use game::Game;
 use nes::addr::Addr;
+use nes::capped_vec::CappedVec;
 use nes::ppu_buffer::BufferTrait;
 use nes::sprites::SpriteState;
 use nes::{apu, io, ppu, ppu_buffer, sprites};
@@ -15,12 +16,11 @@ use utils::u8_to_decimal;
 
 mod constants;
 mod game;
-//mod breakout;
 mod level;
 mod rng;
 mod utils;
 
-const BUFFER_SIZE: usize = 20;
+const BUFFER_SIZE: usize = 40;
 struct Buffer(ppu_buffer::Buffer<BUFFER_SIZE>);
 impl ppu_buffer::BufferTrait<BUFFER_SIZE> for Buffer {
     unsafe fn buffer() -> &'static mut ppu_buffer::Buffer<BUFFER_SIZE> {

@@ -1,6 +1,6 @@
 use nes::constants::ROW;
 
-pub const N_ROWS: u8 = 29; // 29 fills screen
+pub const N_ROWS: u8 = 28; // 28 fills screen
 pub const GRID_SIZE: u16 = (ROW as u16) * (N_ROWS as u16);
 
 pub const ORIGIN: u16 = 0x2020;

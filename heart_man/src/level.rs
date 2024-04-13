@@ -1,4 +1,4 @@
-use nes::{constants::ROW, vec2::Pos};
+use nes::{constants::ROW, io::LEFT, vec2::Pos};
 
 use crate::{
     constants::{COIN_SPRITE, GRID_SIZE, N_ROWS, ORIGIN, WALL_SPRITE},
@@ -38,17 +38,13 @@ pub const fn make_level<const N: usize>(seeds: &[u16; N]) -> [Tile; N] {
     i = 0;
     while i < ROW as usize {
         tiles[i] = Tile::Wall;
+        tiles[(ROW as usize) * (N_ROWS as usize - 1) + i as usize] = Tile::Wall;
         i += 1;
     }
     i = 0;
     while i < (N_ROWS as usize) {
         tiles[(i as usize) * (ROW as usize) as usize] = Tile::Wall;
         tiles[(i as usize + 1) * (ROW as usize) - 1] = Tile::Wall;
-        i += 1;
-    }
-    i = 0;
-    while i < ROW as usize {
-        tiles[(ROW as usize) * (N_ROWS as usize - 2) + i as usize] = Tile::Wall;
         i += 1;
     }
     tiles
@@ -73,14 +69,12 @@ pub fn get_tile_at(tiles: &[Tile], pos: &Pos) -> Tile {
     if index < tiles.len() as u16 {
         tiles[index as usize]
     } else {
-        Tile::Nothing
+        Tile::Wall
     }
 }
 
 pub fn map_pos_to_tile_index(pos: &Pos) -> u16 {
-    let x_shift = pos.x - 0;
-    let y_shift = pos.y - 0;
-    let x_tile = x_shift / 8 + 2;
-    let y_tile = y_shift / 8 + 1;
-    return (x_tile as u16) + (y_tile as u16) * (ROW as u16);
+    let x_tile = pos.x >> 3;
+    let y_tile = (pos.y + 1) >> 3;
+    return (x_tile as u16) + (y_tile as u16) * (ROW as u16) - (ROW as u16);
 }
