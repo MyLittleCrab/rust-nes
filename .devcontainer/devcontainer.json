@@ -1,4 +1,10 @@
 {
     "image": "mrkits/rust-mos",
-    "extensions": ["matklad.rust-analyzer", "serayuzgur.crates", "eamodio.gitlens"]
+    "extensions": [
+        "matklad.rust-analyzer",
+        "serayuzgur.crates",
+        "eamodio.gitlens",
+        "dustypomerleau.rust-syntax",
+        "rust-lang.rust-analyzer"
+    ]
   }
