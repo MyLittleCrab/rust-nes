@@ -9,6 +9,7 @@ pub struct CappedVec<T, const N: usize> {
     arr: [MaybeUninit<T>; N],
     len: usize,
 }
+
 impl<T, const N: usize> CappedVec<T, N> {
     pub const fn new() -> Self {
         Self {
@@ -17,7 +18,7 @@ impl<T, const N: usize> CappedVec<T, N> {
         }
     }
     pub fn len(&self) -> usize {
-        return self.len;
+        self.len
     }
     pub fn clear(&mut self) {
         self.len = 0;
@@ -65,6 +66,21 @@ impl<T, const N: usize> CappedVec<T, N> {
     }
     pub fn iter_mut(&mut self) -> <&mut Self as IntoIterator>::IntoIter {
         self.into_iter()
+    }
+    // Adding first and last methods
+    pub fn first(&self) -> Option<&T> {
+        if self.len > 0 {
+            Some(unsafe { self.arr[0].assume_init_ref() })
+        } else {
+            None
+        }
+    }
+    pub fn last(&self) -> Option<&T> {
+        if self.len > 0 {
+            Some(unsafe { self.arr[self.len - 1].assume_init_ref() })
+        } else {
+            None
+        }
     }
 }
 

@@ -6,7 +6,7 @@ pub enum Orientation {
     Widdershins,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy,PartialEq)]
 pub struct Vec2<T> {
     pub x: T,
     pub y: T,
@@ -47,6 +47,7 @@ impl Orientation {
         }
     }
 }
+
 
 pub type DPos = Vec2<i8>;
 impl DPos {
