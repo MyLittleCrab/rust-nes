@@ -4,6 +4,7 @@ members = [
     "nes",
     "heart_man",
     "brickgame",
+    "snake"
 ]
 
 [profile.dev]
